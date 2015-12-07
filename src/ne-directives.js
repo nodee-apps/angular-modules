@@ -332,6 +332,16 @@ angular.module('neDirectives',['neObject'])
         }
     };
 }])
+.directive('neBindHtml',['$sce', function($sce) {
+    return {
+        restrict: 'A',
+        link: function(scope, element, attrs) {
+            attrs.$observe('neBindHtml', function(htmlText){
+                element.html(htmlText);
+            });
+        }
+    };
+}])
 .filter('html', ['$sce', function ($sce) { 
     return function (text) {
         return $sce.trustAsHtml(text);

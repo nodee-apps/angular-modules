@@ -207,8 +207,8 @@ angular.module('neNotifications',['neLoading'])
                        '                    </td>'+
                        '                    <td style="padding:0px 5px">'+
                        '                        <div ng-if="!n.include">'+
-                       '                            <strong ng-if="n.title">{{n.title|translate}}<br></strong>'+
-                       '                            {{n.text|translate}}'+
+                       '                            <strong ng-if="n.title"><span ne-bind-html="{{n.title|translate}}"></span><br></strong>'+
+                       '                            <span ne-bind-html="{{n.text|translate}}"></span>'+
                        '                        </div>'+
                        '                        <div ng-if="n.include" ng-include="n.include"></div>'+
                        '                    </td>'+

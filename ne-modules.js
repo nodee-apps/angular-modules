@@ -2704,6 +2704,16 @@ angular.module('neDirectives',['neObject'])
         }
     };
 }])
+.directive('neBindHtml',['$sce', function($sce) {
+    return {
+        restrict: 'A',
+        link: function(scope, element, attrs) {
+            attrs.$observe('neBindHtml', function(htmlText){
+                element.html(htmlText);
+            });
+        }
+    };
+}])
 .filter('html', ['$sce', function ($sce) { 
     return function (text) {
         return $sce.trustAsHtml(text);
@@ -4060,8 +4070,8 @@ angular.module('neNotifications',['neLoading'])
                        '                    </td>'+
                        '                    <td style="padding:0px 5px">'+
                        '                        <div ng-if="!n.include">'+
-                       '                            <strong ng-if="n.title">{{n.title|translate}}<br></strong>'+
-                       '                            {{n.text|translate}}'+
+                       '                            <strong ng-if="n.title"><span ne-bind-html="{{n.title|translate}}"></span><br></strong>'+
+                       '                            <span ne-bind-html="{{n.text|translate}}"></span>'+
                        '                        </div>'+
                        '                        <div ng-if="n.include" ng-include="n.include"></div>'+
                        '                    </td>'+
