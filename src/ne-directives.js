@@ -8,13 +8,17 @@ angular.module('neDirectives',['neObject'])
 .directive('neInitData', [ function() {
     return {
         priority: 1000,
-        restrict: 'A',
+        restrict: 'AE',
         compile: function(){
             return {
                 pre: function(scope, element, attrs){
                     if(attrs.neInitData) {
                         scope.$eval((attrs.neInitAs ? attrs.neInitAs+'=' : '')+attrs.neInitData);
                     }
+                    else if(element.html()){
+                        scope.$eval((attrs.neInitAs ? attrs.neInitAs+'=' : '')+element.html());
+                    }
+                    
                     if(attrs.neInitDone) {
                         scope.$eval(attrs.neInitDone);
                     }

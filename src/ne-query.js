@@ -59,7 +59,7 @@ angular.module('neQuery',['neLocal','neObject'])
 .run(['$templateCache', function($templateCache){
     $templateCache.put('neQuery/query.html',
                        '<div class="visible-inline-block">'+
-                       '<div ng-repeat-start="query in query track by $index" class="visible-inline-block text-center" style="position:relative;margin:2px" ng-style="{\'margin-top\':$first ? \'0px\' : \'2px\'}">'+
+                       '<div ng-repeat-start="query in query track by $index" class="visible-inline-block" style="position:relative;margin:2px" ng-style="{\'margin-top\':$first ? \'0px\' : \'2px\'}">'+
                        '    <small ng-if="!$first && query.logical===\'OR\' && !query.length">{{query.logical | translate}}<br></small>'+
                        '    <div ng-if="!query.length" class="visible-inline-block">'+
                        '        <div class="dropdown visible-inline-block" uib-dropdown uib-keyboard-nav>'+
@@ -77,7 +77,7 @@ angular.module('neQuery',['neLocal','neObject'])
                        '                <span>{{query.operator | translate}}&nbsp;</span>'+
                        '            </button>'+
                        '            <ul class="dropdown-menu">'+
-                       '                <li ng-if="!query.field.disableType" style="text-align:center;">'+
+                       '                <li ng-if="!query.field.disableType" class="text-center">'+
                        '                    <div class="btn-group btngroup-xs">'+
                        '                        <button class="btn btn-default btn-xs" ng-class="{\'btn-success\':(query.type.name===type)}" style="padding:2px;" uib-tooltip="{{\'qtype_\'+type | translate}}" ng-repeat="type in query.types" ng-click="query.setType(type);$event.stopPropagation();">'+
                        '                        {{\'qtype_short_\'+type | translate}}'+
@@ -100,7 +100,7 @@ angular.module('neQuery',['neLocal','neObject'])
                        '            <button class="btn btn-default" ng-click="close();query.remove()"><i class="fa fa-fw fa-minus"></i></button>'+
                        '        </div>'+
                        '    </div>'+
-                       '    <div ng-if="query.length" class="visible-inline-block text-center" style="position:relative;">'+
+                       '    <div ng-if="query.length" class="visible-inline-block" style="position:relative;">'+
                        '        <small>{{query.logical | translate}}<br></small>'+
                        '        <div class="btn-group btn-group-xs" style="position:absolute;right:0px;top:1px">'+
                        '            <button class="btn btn-default" style="border:1px dashed #999;border-right:none;color:#999;border-bottom: 1px solid transparent;" ng-click="query.next(\'AND\')">{{::\'AND\' | translate}}</button>'+
@@ -146,7 +146,7 @@ angular.module('neQuery',['neLocal','neObject'])
     
     $templateCache.put('neQuery/sort.html',
                        '<div class="visible-inline-block">'+
-                       '<div ng-repeat-start="sort in query.sortBy track by $index" style="display:inline-block;position:relative;text-align:center">'+
+                       '<div ng-repeat-start="sort in query.sortBy track by $index" style="display:inline-block;position:relative;margin:2px" ng-style="{\'margin-top\':$first ? \'0px\' : \'2px\'}">'+
                        '    <div class="visible-inline-block">'+
                        '        <div class="dropdown visible-inline-block" uib-dropdown uib-keyboard-nav>'+
                        '            <input type="text" class="input-sm dropdown-toggle" uib-dropdown-toggle ng-change="query.setSortByName(sort.fieldName, $index)" ng-model="sort.fieldName" />'+

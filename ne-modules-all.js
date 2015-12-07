@@ -2380,13 +2380,17 @@ angular.module('neDirectives',['neObject'])
 .directive('neInitData', [ function() {
     return {
         priority: 1000,
-        restrict: 'A',
+        restrict: 'AE',
         compile: function(){
             return {
                 pre: function(scope, element, attrs){
                     if(attrs.neInitData) {
                         scope.$eval((attrs.neInitAs ? attrs.neInitAs+'=' : '')+attrs.neInitData);
                     }
+                    else if(element.html()){
+                        scope.$eval((attrs.neInitAs ? attrs.neInitAs+'=' : '')+element.html());
+                    }
+                    
                     if(attrs.neInitDone) {
                         scope.$eval(attrs.neInitDone);
                     }
@@ -3468,12 +3472,18 @@ angular.module('neLocal',[])
 .provider('neLocal',[function(){
     var currentLangId = 'default';
     var langs = { default:{} };
+    var currentPath = '/';
     
     this.translate = function(original){
         if(original===undefined || original===null) return '';
         var orig = original+'';
         var lang = langs[currentLangId] || {};
-        return lang[orig] || langs['default'][orig] || orig || '';
+        lang.common = lang.common || {};
+        return (lang[currentPath] ? lang[currentPath][orig] : null) || lang.common[orig] || langs['default'][orig] || orig || '';
+    };
+    
+    this.setPath = function(path){
+        currentPath = path;
     };
     
     this.language = function(langId){
@@ -3481,15 +3491,42 @@ angular.module('neLocal',[])
         return currentLangId;
     };
     
-    this.set = this.translations = function(langId, original, translated){
-        if(arguments.length===3){
-            langs[langId] = langs[langId] || {};
-            langs[langId][original] = translated;
+    this.languages = function(langId){
+        return langId ? langs[langId] : langs;
+    };
+    
+    this.getLanguageId = function(){
+        return currentLangId;
+    };
+    
+    this.getLanguagePath = function(){
+        return currentPath;
+    };
+    
+    this.set = this.translations = function(langId, path, original, translated){
+        
+        langs[langId] = langs[langId] || {};
+        langs[langId].common = langs[langId].common || {};
+        
+        if(arguments.length===4){
+            langs[langId][path] = langs[langId][path] || {};
+            langs[langId][path][original] = translated;
+        }
+        else if(arguments.length===3 && angular.isObject(original)){
+            langs[langId][path] = langs[langId][path] || {};
+            angular.extend(langs[langId][path], original);
+        }
+        else if(arguments.length===3){
+            translated = arguments[2];
+            original = arguments[1];
+            langs[langId].common[original] = translated;
         }
         else if(arguments.length===2){
-            langs[langId] = langs[langId] || {};
-            angular.extend(langs[langId], original);
+            original = arguments[1];
+            var hasCommon = angular.isObject(original.common);
+            angular.extend(hasCommon ? langs[langId] : langs[langId].common, original);
         }
+        else throw new Error('Wrong arguments');
     };
     
     this.$get = function() {
@@ -3497,6 +3534,11 @@ angular.module('neLocal',[])
     };
     
     return this;
+}])
+.run(['$rootScope', '$location', 'neLocal', function($rootScope, $location, local){
+    $rootScope.$on('$routeChangeStart', function(evt, absNewUrl, absOldUrl){
+        local.setPath($location.path());
+    });
 }])
 .filter('neTranslate', ['neLocal', function(local) {
     return function(input, expression, comparator){
@@ -4334,7 +4376,7 @@ angular.module('neQuery',['neLocal','neObject'])
 .run(['$templateCache', function($templateCache){
     $templateCache.put('neQuery/query.html',
                        '<div class="visible-inline-block">'+
-                       '<div ng-repeat-start="query in query track by $index" class="visible-inline-block text-center" style="position:relative;margin:2px" ng-style="{\'margin-top\':$first ? \'0px\' : \'2px\'}">'+
+                       '<div ng-repeat-start="query in query track by $index" class="visible-inline-block" style="position:relative;margin:2px" ng-style="{\'margin-top\':$first ? \'0px\' : \'2px\'}">'+
                        '    <small ng-if="!$first && query.logical===\'OR\' && !query.length">{{query.logical | translate}}<br></small>'+
                        '    <div ng-if="!query.length" class="visible-inline-block">'+
                        '        <div class="dropdown visible-inline-block" uib-dropdown uib-keyboard-nav>'+
@@ -4352,7 +4394,7 @@ angular.module('neQuery',['neLocal','neObject'])
                        '                <span>{{query.operator | translate}}&nbsp;</span>'+
                        '            </button>'+
                        '            <ul class="dropdown-menu">'+
-                       '                <li ng-if="!query.field.disableType" style="text-align:center;">'+
+                       '                <li ng-if="!query.field.disableType" class="text-center">'+
                        '                    <div class="btn-group btngroup-xs">'+
                        '                        <button class="btn btn-default btn-xs" ng-class="{\'btn-success\':(query.type.name===type)}" style="padding:2px;" uib-tooltip="{{\'qtype_\'+type | translate}}" ng-repeat="type in query.types" ng-click="query.setType(type);$event.stopPropagation();">'+
                        '                        {{\'qtype_short_\'+type | translate}}'+
@@ -4375,7 +4417,7 @@ angular.module('neQuery',['neLocal','neObject'])
                        '            <button class="btn btn-default" ng-click="close();query.remove()"><i class="fa fa-fw fa-minus"></i></button>'+
                        '        </div>'+
                        '    </div>'+
-                       '    <div ng-if="query.length" class="visible-inline-block text-center" style="position:relative;">'+
+                       '    <div ng-if="query.length" class="visible-inline-block" style="position:relative;">'+
                        '        <small>{{query.logical | translate}}<br></small>'+
                        '        <div class="btn-group btn-group-xs" style="position:absolute;right:0px;top:1px">'+
                        '            <button class="btn btn-default" style="border:1px dashed #999;border-right:none;color:#999;border-bottom: 1px solid transparent;" ng-click="query.next(\'AND\')">{{::\'AND\' | translate}}</button>'+
@@ -4421,7 +4463,7 @@ angular.module('neQuery',['neLocal','neObject'])
     
     $templateCache.put('neQuery/sort.html',
                        '<div class="visible-inline-block">'+
-                       '<div ng-repeat-start="sort in query.sortBy track by $index" style="display:inline-block;position:relative;text-align:center">'+
+                       '<div ng-repeat-start="sort in query.sortBy track by $index" style="display:inline-block;position:relative;margin:2px" ng-style="{\'margin-top\':$first ? \'0px\' : \'2px\'}">'+
                        '    <div class="visible-inline-block">'+
                        '        <div class="dropdown visible-inline-block" uib-dropdown uib-keyboard-nav>'+
                        '            <input type="text" class="input-sm dropdown-toggle" uib-dropdown-toggle ng-change="query.setSortByName(sort.fieldName, $index)" ng-model="sort.fieldName" />'+
