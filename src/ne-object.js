@@ -9,7 +9,7 @@ angular.module('neObject',[])
     
     var hasOwn = Object.prototype.hasOwnProperty;
     function isPlainObject(obj) {
-        if (!obj || toString.call(obj) !== '[object Object]' || obj.nodeType || obj.setInterval)
+        if (!obj || Object.prototype.toString.call(obj) !== '[object Object]' || obj.nodeType || obj.setInterval)
             return false;
 
         var has_own_constructor = hasOwnProperty.call(obj, 'constructor');
