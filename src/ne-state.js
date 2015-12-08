@@ -34,7 +34,7 @@ angular.module('neState', ['ngCookies'])
         builder: function(stateObj){
             var locationPrefix = this.prefix;
             var encryptLocation = this.encrypt;
-            var str = encodeURIComponent( JSON.stringify(stateObj) );
+            var str = JSON.stringify(stateObj); //.replace(/=/,'%3D').replace(/\&/, '%26').replace(/\?/, '%3F');
 
             if(encryptLocation) str = encryptString(str);
             return str;
