@@ -3061,6 +3061,7 @@ angular.module('neGrid',['neObject','neLocal'])
     // methods definitions
     function fillItems(items, pagination){
         var grid = this;
+        pagination = pagination || {};
         grid.items = items;
         grid.pagination = pagination;
         grid.pagesCount = Math.ceil(pagination.count / grid.limit);
