@@ -2983,7 +2983,7 @@ angular.module('neGrid',['neObject','neLocal'])
         this.onCreate = settings.onCreate;
         this.onRemove = settings.onRemove;
         this.resource = settings.restResource || settings.resource;
-        this.getResourceMethod = settings.getResourceMethod || settings.resourceMethod || getResourceMethod; // getResourceMethod(opType, item)
+        this.getResourceMethod = settings.getResourceMethod || settings.resourceMethod || (typeof this.resource === 'function' ? this.resource : null) || getResourceMethod; // getResourceMethod(opType, item)
         this.autoLoad = settings.autoLoad || settings.loadOnChange;
         this.multiSelect = settings.multiSelect || settings.multiselect || false;
         // if(!this.resource) throw new Error('neGrid: restResource is undefined');
@@ -6710,9 +6710,9 @@ angular.module('neTree',['neObject'])
         this.onMove = settings.onMove;
         this.onUpdate = settings.onUpdate;
         this.onCreate = settings.onCreate;
-        this.getResourceMethod = settings.getResourceMethod || settings.resourceMethod || getResourceMethod; // getResourceMethod(resource, opType, item)
-        this.onRemove = settings.onRemove;
         this.resource = settings.restResource || settings.resource;
+        this.getResourceMethod = settings.getResourceMethod || settings.resourceMethod || (typeof this.resource === 'function' ? this.resource : null) || getResourceMethod; // getResourceMethod(opType, item)
+        this.onRemove = settings.onRemove;
         this.autoLoad = settings.autoLoad || settings.loadOnChange;
         this.multiSelect = settings.multiSelect || settings.multiselect || false;
         // if(!this.resource) throw new Error('settings.resource is undefined');
