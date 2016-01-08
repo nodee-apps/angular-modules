@@ -34,8 +34,14 @@ angular.module('neState', ['ngCookies'])
         builder: function(stateObj){
             var locationPrefix = this.prefix;
             var encryptLocation = this.encrypt;
-            var str = JSON.stringify(stateObj); //.replace(/=/,'%3D').replace(/\&/, '%26').replace(/\?/, '%3F');
-
+            var str = JSON.stringify(stateObj, removeEmptyStates); //.replace(/=/,'%3D').replace(/\&/, '%26').replace(/\?/, '%3F');
+            
+            // there don't have to be empty states in url
+            function removeEmptyStates(key, value){
+                if(!stateObj[key]) return value;
+                if(Object.keys(stateObj[key]).length) return value;
+            }
+            
             if(encryptLocation) str = encryptString(str);
             return str;
         },

@@ -2857,8 +2857,12 @@ angular.module('neGrid',['neObject','neLocal'])
         '           <button class="btn btn-default" ng-disabled="grid.prevDisabled" ng-click="grid.setPage(\'first\')"><span class="fa fa-fast-backward"></span></button>' +
         '           <button class="btn btn-default" ng-disabled="grid.prevDisabled" ng-click="grid.setPage(\'prev\')"><span class="fa fa-backward"></span></button>' +
         '        </div>'+
-        '        <span> {{\'page\'|translate}} <input type="number" class="input-{{size}} width-sm" ng-model="grid.pagination.page" min="1" max="{{grid.pagination.pages}}" ne-keypress-enter="grid.setPage(grid.pagination.page)"> {{\'of\'|translate}} {{grid.pagesCount}} <span class="hidden-xs">({{grid.pagination.count}} {{\'items\'|translate}})</span></span>' +
-        
+        '        <span>'+
+        '           <span ng-if="grid.pagesCount"> {{\'page\'|translate}} </span>' +
+        '           <input type="number" class="input-{{size}} width-sm" ng-model="grid.pagination.page" min="1" max="{{grid.pagination.pages||\'\'}}" ne-keypress-enter="grid.setPage(grid.pagination.page)">' +
+        '           <span ng-if="grid.pagesCount"> {{\'of\'|translate}} {{grid.pagesCount}} </span>' +
+        '           <span ng-if="grid.pagesCount" class="hidden-xs">({{grid.pagination.count}} {{\'items\'|translate}})</span>'+
+        '        </span>' +
         '        <div class="btn-group btn-group-{{size}}">'+
         '           <button class="btn btn-default" ng-disabled="grid.nextDisabled" ng-click="grid.setPage(\'next\')"><span class="fa fa-forward"></span></button>' +
         '           <button class="btn btn-default" ng-disabled="grid.nextDisabled" ng-click="grid.setPage(\'last\')"><span class="fa fa-fast-forward"></span></button>' +
@@ -6213,8 +6217,14 @@ angular.module('neState', ['ngCookies'])
         builder: function(stateObj){
             var locationPrefix = this.prefix;
             var encryptLocation = this.encrypt;
-            var str = JSON.stringify(stateObj); //.replace(/=/,'%3D').replace(/\&/, '%26').replace(/\?/, '%3F');
-
+            var str = JSON.stringify(stateObj, removeEmptyStates); //.replace(/=/,'%3D').replace(/\&/, '%26').replace(/\?/, '%3F');
+            
+            // there don't have to be empty states in url
+            function removeEmptyStates(key, value){
+                if(!stateObj[key]) return value;
+                if(Object.keys(stateObj[key]).length) return value;
+            }
+            
             if(encryptLocation) str = encryptString(str);
             return str;
         },
