@@ -357,7 +357,7 @@ angular.module('neGrid',['neObject','neLocal'])
         var grid = this;
         
         grid.getResourceMethod('create', item)(item, function(data){
-            grid.setPage('first');
+            grid.setPage('first', cb);
             if(typeof grid.onCreate === 'function') grid.onCreate(item);
             if(!grid.autoLoad) grid.load(cb);
         });

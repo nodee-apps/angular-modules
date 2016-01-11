@@ -21,7 +21,7 @@
 angular.module('neLocal',[])
 .provider('neLocal',[function(){
     var currentLangId = 'default';
-    var langs = { default:{} };
+    var langs = { default:{ common:{} } };
     var currentPath = '/';
     
     this.translate = function(original){
@@ -29,7 +29,8 @@ angular.module('neLocal',[])
         var orig = original+'';
         var lang = langs[currentLangId] || {};
         lang.common = lang.common || {};
-        return (lang[currentPath] ? lang[currentPath][orig] : null) || lang.common[orig] || langs['default'][orig] || orig || '';
+        return (lang[currentPath] ? lang[currentPath][orig] : null) || lang.common[orig] || 
+               (langs.default[currentPath] ? langs.default[currentPath][orig] : null) || langs.default.common[orig] || orig || '';
     };
     
     this.setPath = function(path){
