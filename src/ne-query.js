@@ -466,7 +466,7 @@ angular.module('neQuery',['neLocal','neObject'])
         else if(typeof value==='number') type = 'number';
         else if(value instanceof Date) type = 'date';
         else if(typeof value==='string') {
-            match = value.match(regexIso8601)
+            match = value.match(regexIso8601);
             if(match) milliseconds = Date.parse(match[0]);
             if (!isNaN(milliseconds)) {
                 value = new Date(milliseconds);
@@ -643,7 +643,7 @@ angular.module('neQuery',['neLocal','neObject'])
                 
                 for(var i=0;i<types.string.operators.length;i++){
                     op = types.string.operators[i];
-                    if(queries[op] && queries[op].check && (match = queries[op].check(value))) {
+                    if(queries[op] && queries[op].check && (match = queries[op].check(value)) !== undefined) {
                         operator = op;
                         value = match;
                         break;
@@ -669,8 +669,8 @@ angular.module('neQuery',['neLocal','neObject'])
                 return { $regex: '.*' +value+ '.*' };
             },
             check: function(value){
-                value = ( value.match(/^\.\*(.+)\.\*$/ ) || [] )[1];
-                return unEscapeRegExp(value||'');
+                value = ( value.match(/^\.\*(.*)\.\*$/ ) || [] )[1];
+                return value === undefined ? undefined : unEscapeRegExp(value);
             }
         },
         $regex_ncontains:{ // regex shortcut
@@ -679,8 +679,8 @@ angular.module('neQuery',['neLocal','neObject'])
                 return { $regex: '^((?!' +value+ ').)*$' };
             },
             check: function(value){
-                value = (value.match(/^\^\(\(\?\!(.+)\)\.\)\*\$$/) || [])[1];
-                return unEscapeRegExp(value||'');
+                value = (value.match(/^\^\(\(\?\!(.*)\)\.\)\*\$$/) || [])[1];
+                return value === undefined ? undefined : unEscapeRegExp(value);
             }
         },
         $regex_begins:{ // regex shortcut
@@ -689,8 +689,8 @@ angular.module('neQuery',['neLocal','neObject'])
                 return { $regex: '^' +value+ '.*' };
             },
             check: function(value){
-                value = (value.match(/^\^(.+)\.\*$/) || [])[1];
-                return unEscapeRegExp(value||'');
+                value = (value.match(/^\^(.*)\.\*$/) || [])[1];
+                return value === undefined ? undefined : unEscapeRegExp(value);
             }
         },
         $regex_nbegins:{ // regex shortcut
@@ -699,8 +699,8 @@ angular.module('neQuery',['neLocal','neObject'])
                 return { $regex: '^(?!' +value+ ').*$' };
             },
             check: function(value){
-                value = (value.match(/^\^\(\?\!(.+)\)\.\*\$$/) || [])[1];
-                return unEscapeRegExp(value||'');
+                value = (value.match(/^\^\(\?\!(.*)\)\.\*\$$/) || [])[1];
+                return value === undefined ? undefined : unEscapeRegExp(value);
             }
         },
         $regex_ends:{ // regex shortcut
@@ -709,8 +709,8 @@ angular.module('neQuery',['neLocal','neObject'])
                 return { $regex: '.*' +value+ '$' };
             },
             check: function(value){
-                value = (value.match(/^\.\*(.+)\$$/) || [])[1];
-                return unEscapeRegExp(value||'');
+                value = (value.match(/^\.\*(.*)\$$/) || [])[1];
+                return value === undefined ? undefined : unEscapeRegExp(value);
             }
         },
         $regex_nends:{ // regex shortcut
@@ -719,8 +719,8 @@ angular.module('neQuery',['neLocal','neObject'])
                 return { $regex: '^(?!.*' +value+ '$)' };
             },
             check: function(value){
-                value = (value.match(/^\^\(\?\!\.\*(.+)\$\)$/) || [])[1];
-                return unEscapeRegExp(value||'');
+                value = (value.match(/^\^\(\?\!\.\*(.*)\$\)$/) || [])[1];
+                return value === undefined ? undefined : unEscapeRegExp(value);
             }
         },
         $ne:{

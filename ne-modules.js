@@ -4799,7 +4799,7 @@ angular.module('neQuery',['neLocal','neObject'])
         else if(typeof value==='number') type = 'number';
         else if(value instanceof Date) type = 'date';
         else if(typeof value==='string') {
-            match = value.match(regexIso8601)
+            match = value.match(regexIso8601);
             if(match) milliseconds = Date.parse(match[0]);
             if (!isNaN(milliseconds)) {
                 value = new Date(milliseconds);
@@ -4976,7 +4976,7 @@ angular.module('neQuery',['neLocal','neObject'])
                 
                 for(var i=0;i<types.string.operators.length;i++){
                     op = types.string.operators[i];
-                    if(queries[op] && queries[op].check && (match = queries[op].check(value))) {
+                    if(queries[op] && queries[op].check && (match = queries[op].check(value)) !== undefined) {
                         operator = op;
                         value = match;
                         break;
@@ -5002,8 +5002,8 @@ angular.module('neQuery',['neLocal','neObject'])
                 return { $regex: '.*' +value+ '.*' };
             },
             check: function(value){
-                value = ( value.match(/^\.\*(.+)\.\*$/ ) || [] )[1];
-                return unEscapeRegExp(value||'');
+                value = ( value.match(/^\.\*(.*)\.\*$/ ) || [] )[1];
+                return value === undefined ? undefined : unEscapeRegExp(value);
             }
         },
         $regex_ncontains:{ // regex shortcut
@@ -5012,8 +5012,8 @@ angular.module('neQuery',['neLocal','neObject'])
                 return { $regex: '^((?!' +value+ ').)*$' };
             },
             check: function(value){
-                value = (value.match(/^\^\(\(\?\!(.+)\)\.\)\*\$$/) || [])[1];
-                return unEscapeRegExp(value||'');
+                value = (value.match(/^\^\(\(\?\!(.*)\)\.\)\*\$$/) || [])[1];
+                return value === undefined ? undefined : unEscapeRegExp(value);
             }
         },
         $regex_begins:{ // regex shortcut
@@ -5022,8 +5022,8 @@ angular.module('neQuery',['neLocal','neObject'])
                 return { $regex: '^' +value+ '.*' };
             },
             check: function(value){
-                value = (value.match(/^\^(.+)\.\*$/) || [])[1];
-                return unEscapeRegExp(value||'');
+                value = (value.match(/^\^(.*)\.\*$/) || [])[1];
+                return value === undefined ? undefined : unEscapeRegExp(value);
             }
         },
         $regex_nbegins:{ // regex shortcut
@@ -5032,8 +5032,8 @@ angular.module('neQuery',['neLocal','neObject'])
                 return { $regex: '^(?!' +value+ ').*$' };
             },
             check: function(value){
-                value = (value.match(/^\^\(\?\!(.+)\)\.\*\$$/) || [])[1];
-                return unEscapeRegExp(value||'');
+                value = (value.match(/^\^\(\?\!(.*)\)\.\*\$$/) || [])[1];
+                return value === undefined ? undefined : unEscapeRegExp(value);
             }
         },
         $regex_ends:{ // regex shortcut
@@ -5042,8 +5042,8 @@ angular.module('neQuery',['neLocal','neObject'])
                 return { $regex: '.*' +value+ '$' };
             },
             check: function(value){
-                value = (value.match(/^\.\*(.+)\$$/) || [])[1];
-                return unEscapeRegExp(value||'');
+                value = (value.match(/^\.\*(.*)\$$/) || [])[1];
+                return value === undefined ? undefined : unEscapeRegExp(value);
             }
         },
         $regex_nends:{ // regex shortcut
@@ -5052,8 +5052,8 @@ angular.module('neQuery',['neLocal','neObject'])
                 return { $regex: '^(?!.*' +value+ '$)' };
             },
             check: function(value){
-                value = (value.match(/^\^\(\?\!\.\*(.+)\$\)$/) || [])[1];
-                return unEscapeRegExp(value||'');
+                value = (value.match(/^\^\(\?\!\.\*(.*)\$\)$/) || [])[1];
+                return value === undefined ? undefined : unEscapeRegExp(value);
             }
         },
         $ne:{
@@ -6238,7 +6238,7 @@ angular.module('neState', ['ngCookies'])
             var locationStore = this;
             if(!(locationStore.autoFill || locationStore.sync)) return;
             
-            if(stateId) locationStore._unbinders[ stateId || '_root'] = {
+            if(stateId) locationStore._unbinders[ stateId ] = {
                 routeUpdate: $rootScope.$on('$routeUpdate', function (){
                     locationStore.fill(state, stateId);
                 }),
@@ -6258,9 +6258,9 @@ angular.module('neState', ['ngCookies'])
             
             for(var i=0;i<unbindStateIds.length;i++){
                 var id = unbindStateIds[i];
-                for(var key in (locationStore._unbinders[id] || {})){
-                    locationStore._unbinders[id][key].routeUpdate();
-                    locationStore._unbinders[id][key].routeChangeSuccess();
+                if(locationStore._unbinders[id]){
+                    locationStore._unbinders[id].routeUpdate();
+                    locationStore._unbinders[id].routeChangeSuccess();
                 }
             }
         },
@@ -6458,16 +6458,18 @@ angular.module('neState', ['ngCookies'])
         return this;
     };
     
-    StateService.prototype.unbind = 
     StateService.prototype.destroy = function(id) {
         if(id) {
+            this.history[id].store.unbind(this, id);
+            this.store.unbind(this, id);
             this.clear(id);
+            delete this.history[id];
         }
         else {
             this.history = {};
             this.changeListeners = [];
             this.store.unbind(this, id);
-            for(var s in this.history[id].store) this.history[id].store[s].unbind(this, id);
+            for(var h in this.history) this.history[h].store.unbind(this, h);
         }
         return this;
     };
