@@ -9,35 +9,28 @@ angular.module('ui.bootstrap.ext', ['ui.bootstrap'])
     datepickerPopupConfig.showMeridian = false;
 }])
 .run(["$templateCache", function($templateCache) {
-  $templateCache.put("template/datetimepicker/popup.html",
-    "<ul class=\"dropdown-menu\" ng-if=\"isOpen\" style=\"max-height:450px;display: block\" ng-style=\"{top: position.top+'px', left: position.left+'px'}\" ng-keydown=\"keydown($event)\" ng-click=\"$event.stopPropagation()\">\n" +
-    "	<li ng-transclude></li>\n" +
-    "	<li style=\"text-align:center\"><div style=\"display:inline-block;\" uib-timepicker ng-model=\"date\" ng-change=\"dateSelection(date)\" readonly-input=\"$parent.$parent.readonlyInput\" hour-step=\"$parent.$parent.hourStep\" minute-step=\"$parent.$parent.minuteStep\" show-meridian=\"$parent.$parent.showMeridian\" min=\"$parent.$parent.min\" max=\"$parent.$parent.max\"></div></li>\n" +
-    "	<li style=\"padding:10px 9px 2px\">\n" +
-    //"		<span ng-if=\"showButtonBar\" class=\"btn-group pull-left\">\n" +
-    //"			<button type=\"button\" class=\"btn btn-sm btn-info\" ng-click=\"select('today')\" ng-disabled=\"isDisabled('today')\">{{ getText('current') }}</button>\n" +
-    //"			<button type=\"button\" class=\"btn btn-sm btn-danger\" ng-click=\"select(null)\">{{ getText('clear') }}</button>\n" +
-    //"		</span>\n" +
-    "		<button type=\"button\" class=\"btn btn-sm btn-success btn-block\" ng-click=\"$parent.$parent.done ? $parent.$parent.done(date) : close()\">{{ getText('close') }}</button>\n" +
-    "	</li>\n" +
-    "</ul>\n" +
-    "");
+    $templateCache.put("uib/template/datetimepicker/popup.html",
+                       "<ul class=\"uib-datepicker-popup dropdown-menu\" dropdown-nested ng-if=\"isOpen\" style=\"max-height:450px;display: block\" ng-style=\"{top: position.top+'px', left: position.left+'px'}\" ng-keydown=\"keydown($event)\" ng-click=\"$event.stopPropagation()\">\n" +
+                       "	<li ng-transclude></li>\n" +
+                       "	<li style=\"text-align:center\"><div style=\"display:inline-block;\" uib-timepicker ng-model=\"date\" ng-change=\"dateSelection(date)\" readonly-input=\"$parent.$parent.readonlyInput\" show-seconds=\"$parent.$parent.showSeconds\" hour-step=\"$parent.$parent.hourStep\" minute-step=\"$parent.$parent.minuteStep\" show-meridian=\"$parent.$parent.showMeridian\" min=\"$parent.$parent.min\" max=\"$parent.$parent.max\"></div></li>\n" +
+                       "	<li ng-if=\"showButtonBar\" style=\"padding:10px 9px 2px\" class=\"uib-button-bar\">\n" +
+                       //"		<span class=\"btn-group pull-left\">\n" +
+                       //"			<button type=\"button\" class=\"btn btn-sm btn-info uib-datepicker-current\" ng-click=\"$parent.$parent.$parent.setNow()\" ng-disabled=\"isDisabled('today')\">{{ getText('current') }}</button>\n" +
+                       //"			<button type=\"button\" class=\"btn btn-sm btn-danger uib-clear\" ng-click=\"$parent.$parent.$parent.setNull()\">{{ getText('clear') }}</button>\n" +
+                       //"		</span>\n" +
+                       "		<button type=\"button\" class=\"btn btn-sm btn-success pull-right uib-close\" ng-click=\"close()\">{{ getText('close') }}</button>\n" +
+                       "	</li>\n" +
+                       "</ul>\n" +
+                       "");
 }])
-.directive('uibDatetimepickerPopup',['dateFilter', 'dateParser', 'uibDatepickerPopupConfig', function(dateFilter, dateParser, datepickerPopupConfig){
+.directive('uibDatetimepickerPopup',['uibDatepickerPopupConfig', function(datepickerPopupConfig){
     return {
         restrict: 'A',
         require: 'ngModel',
         replace: true,
-        template: '<input uib-datepicker-popup="{{dateFormat}}" close-on-date-selection="false" uib-datepicker-popup-template-url="template/datetimepicker/popup.html">',
+        template: '<input uib-datepicker-popup="{{dateFormat}}" close-on-date-selection="false" datepicker-popup-template-url="uib/template/datetimepicker/popup.html">',
         link: function(scope, element, attrs, ngModel){
-            var dateFormat;
-            var isHtml5DateInput = false;
-            var defaultFormat = 'yyyy-MM-ddTHH:mm:ss.sss';
-            
-            //if(attrs.done || attrs.onDone) scope.done = function(date) {
-            //    scope.date = date;
-            //    scope.$apply(attrs.done || attrs.onDone);
-            //}
+            var defaultFormat = 'yyyy-MM-dd HH:mm:ss';
             
             // timepicker options, that can be attributes
             scope.readonlyInput = attrs.readonlyInput; // (Defaults: false) : Whether user can type inside the hours & minutes input.
@@ -46,6 +39,8 @@ angular.module('ui.bootstrap.ext', ['ui.bootstrap'])
             scope.showMeridian = attrs.showMeridian || datepickerPopupConfig.showMeridian;  // (Defaults: false) : Whether to display 12H or 24H mode.
             scope.min = attrs.min; // (Defaults: undefined) : Minimum time a user can select
             scope.max = attrs.max; // (Defaults: undefined) : Maximum time a user can select
+            scope.showSeconds = attrs.showSeconds;
+            scope.dateFormat = attrs.uibDatetimepickerPopup || datepickerPopupConfig.datetimepickerPopup || defaultFormat;
             
             // hidden timepicker options
             // template-url (Defaults: template/timepicker/timepicker.html) : Add the ability to override the template used on the component.
@@ -53,81 +48,205 @@ angular.module('ui.bootstrap.ext', ['ui.bootstrap'])
             // mousewheel (Defaults: true) : Whether user can scroll inside the hours & minutes input to increase or decrease it's values.
             // arrowkeys (Defaults: true) : Whether user can use up/down arrowkeys inside the hours & minutes input to increase or decrease it's values.
             // show-spinners (Defaults: true) : Shows spinner arrows above and below the inputs
-            
-            if (datepickerPopupConfig.html5Types[attrs.type]) {
-              dateFormat = datepickerPopupConfig.html5Types[attrs.type];
-              isHtml5DateInput = true;
-            } else {
-              dateFormat = attrs.datetimepickerPopup || datepickerPopupConfig.datetimepickerPopup || defaultFormat;
-              attrs.$observe('datetimepickerPopup', function(value, oldValue) {
-                  var newDateFormat = value || datepickerPopupConfig.datetimepickerPopup || defaultFormat;
-                  // Invalidate the $modelValue to ensure that formatters re-run
-                  // FIXME: Refactor when PR is merged: https://github.com/angular/angular.js/pull/10764
-                  if (newDateFormat !== dateFormat) {
-                    dateFormat = newDateFormat;
-                    scope.dateFormat = dateFormat;
-                    ngModel.$modelValue = null;
-      
-                    if (!dateFormat) {
-                      throw new Error('datepickerPopup must have a date format specified.');
-                    }
-                  }
-              });
-            }
-      
-            if (!dateFormat) {
-              throw new Error('datepickerPopup must have a date format specified.');
-            }
-            
-            scope.dateFormat = dateFormat;
         }
     };
 }])
-// fixed keyboard nav if dropdown menu missing error
-.decorator('uibKeyboardNavDirective', ['$delegate', function($delegate){
-    var directiveFromThisModule;
-    for(var i=0;i<$delegate.length;i++) {
-        if($delegate[i].$$moduleName === 'ui.bootstrap.ext') directiveFromThisModule = $delegate[i];
-    }
-    
-    return [ directiveFromThisModule ];
-}])
-.directive('uibKeyboardNav', function() {
-    return {
-        restrict: 'A',
-        require: '?^uibDropdown',
-        link: function(scope, element, attrs, dropdownCtrl) {
-            element.bind('keydown', function(e) {
-                if ([38, 40].indexOf(e.which) !== -1) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    
-                    // var elems = dropdownCtrl.dropdownMenu.find('a');
-                    var elems = element.find('ul').find('a');
-                    
-                    switch (e.which) {
-                        case (40): { // Down
-                            if (!angular.isNumber(dropdownCtrl.selectedOption)) {
-                                dropdownCtrl.selectedOption = 0;
-                            } else {
-                                dropdownCtrl.selectedOption = dropdownCtrl.selectedOption === elems.length -1 ?
-                                    dropdownCtrl.selectedOption : dropdownCtrl.selectedOption + 1;
-                            }
-                            break;
-                        }
-                        case (38): { // Up
-                            if (!angular.isNumber(dropdownCtrl.selectedOption)) {
-                                dropdownCtrl.selectedOption = elems.length - 1;
-                            } else {
-                                dropdownCtrl.selectedOption = dropdownCtrl.selectedOption === 0 ?
-                                    0 : dropdownCtrl.selectedOption - 1;
-                            }
-                            break;
-                        }
-                    }
-                    if(elems[dropdownCtrl.selectedOption]) elems[dropdownCtrl.selectedOption].focus();
-                }
+.controller('UibDropdownController', ['$scope', '$element', '$attrs', '$parse', 'uibDropdownConfig', 'uibDropdownService', '$animate', '$uibPosition', '$document', '$compile', '$templateRequest', function($scope, $element, $attrs, $parse, dropdownConfig, uibDropdownService, $animate, $position, $document, $compile, $templateRequest) {
+    var self = this,
+        scope = $scope.$new(), // create a child scope so we are not polluting original one
+        templateScope,
+        appendToOpenClass = dropdownConfig.appendToOpenClass,
+        openClass = dropdownConfig.openClass,
+        getIsOpen,
+        setIsOpen = angular.noop,
+        toggleInvoker = $attrs.onToggle ? $parse($attrs.onToggle) : angular.noop,
+        appendToBody = false,
+        appendTo = null,
+        keynavEnabled = false,
+        selectedOption = null,
+        body = $document.find('body');
+
+    $element.addClass('dropdown');
+
+    this.init = function() {
+        if ($attrs.isOpen) {
+            getIsOpen = $parse($attrs.isOpen);
+            setIsOpen = getIsOpen.assign;
+
+            $scope.$watch(getIsOpen, function(value) {
+                scope.isOpen = !!value;
+            });
+        }
+
+        if (angular.isDefined($attrs.dropdownAppendTo)) {
+            var appendToEl = $parse($attrs.dropdownAppendTo)(scope);
+            if (appendToEl) {
+                appendTo = angular.element(appendToEl);
+            }
+        }
+
+        appendToBody = angular.isDefined($attrs.dropdownAppendToBody);
+        keynavEnabled = angular.isDefined($attrs.keyboardNav);
+
+        if (appendToBody && !appendTo) {
+            appendTo = body;
+        }
+
+        if (appendTo && self.dropdownMenu) {
+            appendTo.append(self.dropdownMenu);
+            $element.on('$destroy', function handleDestroyEvent() {
+                self.dropdownMenu.remove();
             });
         }
     };
-})
+
+    this.toggle = function(open) {
+        return scope.isOpen = arguments.length ? !!open : !scope.isOpen;
+    };
+
+    // Allow other directives to watch status
+    this.isOpen = function() {
+        return scope.isOpen;
+    };
+
+    scope.getToggleElement = function() {
+        return self.toggleElement;
+    };
+
+    scope.getAutoClose = function() {
+        return $attrs.autoClose || 'always'; //or 'outsideClick' or 'disabled'
+    };
+
+    scope.getElement = function() {
+        return $element;
+    };
+
+    scope.isKeynavEnabled = function() {
+        return keynavEnabled;
+    };
+
+    scope.focusDropdownEntry = function(keyCode) {
+        var elems = self.dropdownMenu ? //If append to body is used.
+            angular.element(self.dropdownMenu).find('a') :
+        $element.find('ul').eq(0).find('a');
+
+        switch (keyCode) {
+            case 40: {
+                if (!angular.isNumber(self.selectedOption)) {
+                    self.selectedOption = 0;
+                } else {
+                    self.selectedOption = self.selectedOption === elems.length - 1 ?
+                        self.selectedOption :
+                    self.selectedOption + 1;
+                }
+                break;
+            }
+            case 38: {
+                if (!angular.isNumber(self.selectedOption)) {
+                    self.selectedOption = elems.length - 1;
+                } else {
+                    self.selectedOption = self.selectedOption === 0 ?
+                        0 : self.selectedOption - 1;
+                }
+                break;
+            }
+        }
+        if(elems[self.selectedOption]) elems[self.selectedOption].focus();
+    };
+
+    scope.getDropdownElement = function() {
+        return self.dropdownMenu;
+    };
+
+    scope.focusToggleElement = function() {
+        if (self.toggleElement) {
+            self.toggleElement[0].focus();
+        }
+    };
+
+    scope.$watch('isOpen', function(isOpen, wasOpen) {
+        if (appendTo && self.dropdownMenu) {
+            var pos = $position.positionElements($element, self.dropdownMenu, 'bottom-left', true),
+                css,
+                rightalign;
+
+            css = {
+                top: pos.top + 'px',
+                display: isOpen ? 'block' : 'none'
+            };
+
+            rightalign = self.dropdownMenu.hasClass('dropdown-menu-right');
+            if (!rightalign) {
+                css.left = pos.left + 'px';
+                css.right = 'auto';
+            } else {
+                css.left = 'auto';
+                css.right = window.innerWidth -
+                    (pos.left + $element.prop('offsetWidth')) + 'px';
+            }
+
+            // Need to adjust our positioning to be relative to the appendTo container
+            // if it's not the body element
+            if (!appendToBody) {
+                var appendOffset = $position.offset(appendTo);
+
+                css.top = pos.top - appendOffset.top + 'px';
+
+                if (!rightalign) {
+                    css.left = pos.left - appendOffset.left + 'px';
+                } else {
+                    css.right = window.innerWidth -
+                        (pos.left - appendOffset.left + $element.prop('offsetWidth')) + 'px';
+                }
+            }
+
+            self.dropdownMenu.css(css);
+        }
+
+        var openContainer = appendTo ? appendTo : $element;
+
+        $animate[isOpen ? 'addClass' : 'removeClass'](openContainer, appendTo ? appendToOpenClass : openClass).then(function() {
+            if (angular.isDefined(isOpen) && isOpen !== wasOpen) {
+                toggleInvoker($scope, { open: !!isOpen });
+            }
+        });
+
+        if (isOpen) {
+            if (self.dropdownMenuTemplateUrl) {
+                $templateRequest(self.dropdownMenuTemplateUrl).then(function(tplContent) {
+                    templateScope = scope.$new();
+                    $compile(tplContent.trim())(templateScope, function(dropdownElement) {
+                        var newEl = dropdownElement;
+                        self.dropdownMenu.replaceWith(newEl);
+                        self.dropdownMenu = newEl;
+                    });
+                });
+            }
+
+            scope.focusToggleElement();
+            uibDropdownService.open(scope);
+        } else {
+            if (self.dropdownMenuTemplateUrl) {
+                if (templateScope) {
+                    templateScope.$destroy();
+                }
+                var newEl = angular.element('<ul class="dropdown-menu"></ul>');
+                self.dropdownMenu.replaceWith(newEl);
+                self.dropdownMenu = newEl;
+            }
+
+            uibDropdownService.close(scope);
+            self.selectedOption = null;
+        }
+
+        if (angular.isFunction(setIsOpen)) {
+            setIsOpen($scope, isOpen);
+        }
+    });
+
+    $scope.$on('$locationChangeSuccess', function() {
+        if (scope.getAutoClose() !== 'disabled') {
+            scope.isOpen = false;
+        }
+    });
+}]);

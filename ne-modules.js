@@ -4372,6 +4372,7 @@ angular.module('neQuery',['neLocal','neObject'])
         
         qtype_short_number:'0-9',
         qtype_short_date:'Date',
+        qtype_short_datetime:'Time',
         qtype_short_boolean:'Y/N',
         qtype_short_string:'A-Z',
         qtype_short_array:'[A]',
@@ -4379,6 +4380,7 @@ angular.module('neQuery',['neLocal','neObject'])
         
         qtype_number:'Number',
         qtype_date:'Date',
+        qtype_datetime:'Date & Time',
         qtype_boolean:'Boolean',
         qtype_string:'Text',
         qtype_array:'Array',
@@ -4395,7 +4397,7 @@ angular.module('neQuery',['neLocal','neObject'])
                        '<div ng-repeat-start="query in query track by $index" class="visible-inline-block" style="position:relative;margin:2px" ng-style="{\'margin-top\':$first ? \'0px\' : \'2px\'}">'+
                        '    <small ng-if="!$first && query.logical===\'OR\' && !query.length">{{query.logical | translate}}<br></small>'+
                        '    <div ng-if="!query.length" class="visible-inline-block">'+
-                       '        <div class="dropdown visible-inline-block" uib-dropdown uib-keyboard-nav>'+
+                       '        <div class="dropdown visible-inline-block" uib-dropdown keyboard-nav>'+
                        '            <input type="text" class="input-sm" uib-dropdown-toggle ng-change="query.setFieldByName(query.fieldName)" ng-model="query.fieldName" />'+
                        '            <ul ng-if="query.fields.filterByName(query.fieldName, query.field.name).length" class="dropdown-menu">'+
                        '                <li ng-repeat="field in query.fields.filterByName(query.fieldName, query.field.name)" ng-class="{\'active\':(field.name===query.fieldName)}">'+
@@ -4405,11 +4407,11 @@ angular.module('neQuery',['neLocal','neObject'])
                        '                </li>'+
                        '            </ul>'+
                        '        </div>'+
-                       '        <div class="dropdown visible-inline-block" uib-dropdown uib-keyboard-nav>'+
+                       '        <div class="dropdown visible-inline-block" uib-dropdown keyboard-nav>'+
                        '            <button ng-disabled="query.field.disableOperator" class="btn btn-default btn-sm" uib-dropdown-toggle style="width:120px;">'+
                        '                <span>{{query.operator | translate}}&nbsp;</span>'+
                        '            </button>'+
-                       '            <ul class="dropdown-menu">'+
+                       '            <ul class="dropdown-menu" style="min-width:190px">'+
                        '                <li ng-if="!query.field.disableType" class="text-center">'+
                        '                    <div class="btn-group btngroup-xs">'+
                        '                        <button class="btn btn-default btn-xs" ng-class="{\'btn-success\':(query.type.name===type)}" style="padding:2px;" uib-tooltip="{{\'qtype_\'+type | translate}}" ng-repeat="type in query.types" ng-click="query.setType(type);$event.stopPropagation();">'+
@@ -4454,6 +4456,15 @@ angular.module('neQuery',['neLocal','neObject'])
                        '       ng-click="query.value_opened=!query.value_opened" '+
                        '       ng-model="query.value"/>');
     
+    $templateCache.put('neQuery/datetime.html',
+                       '<input type="text" '+
+                       '       class="input-sm" '+
+                       '       uib-datetimepicker-popup '+
+                       '       show-seconds="true" '+
+                       '       is-open="query.value_opened" '+
+                       '       ng-click="query.value_opened=!query.value_opened" '+
+                       '       ng-model="query.value"/>');
+    
     $templateCache.put('neQuery/number.html',
                        '<input type="number" class="input-sm" ng-model="query.value" style="width:142px;"/>');
     
@@ -4481,7 +4492,7 @@ angular.module('neQuery',['neLocal','neObject'])
                        '<div class="visible-inline-block">'+
                        '<div ng-repeat-start="sort in query.sortBy track by $index" style="display:inline-block;position:relative;margin:2px" ng-style="{\'margin-top\':$first ? \'0px\' : \'2px\'}">'+
                        '    <div class="visible-inline-block">'+
-                       '        <div class="dropdown visible-inline-block" uib-dropdown uib-keyboard-nav>'+
+                       '        <div class="dropdown visible-inline-block" uib-dropdown keyboard-nav>'+
                        '            <input type="text" class="input-sm dropdown-toggle" uib-dropdown-toggle ng-change="query.setSortByName(sort.fieldName, $index)" ng-model="sort.fieldName" />'+
                        '            <ul ng-if="query.fields.filterByName(sort.fieldName, sort.name).length" class="dropdown-menu">'+
                        '                <li ng-repeat="field in query.fields.filterByName(sort.fieldName, sort.name)" ng-class="{\'active\':(field.name===sort.fieldName)}">'+
@@ -4560,6 +4571,7 @@ angular.module('neQuery',['neLocal','neObject'])
         string: 'neQuery/string.html',
         boolean: 'neQuery/boolean.html',
         date: 'neQuery/date.html',
+        datetime: 'neQuery/datetime.html',
         list: 'neQuery/list.html'
     };
     
@@ -4600,6 +4612,11 @@ angular.module('neQuery',['neLocal','neObject'])
             name:'date',
             operators:['$equal','$lt','$lte','$gt','$gte'], // '=','<','<=','>','>='
             template: templates.date
+        },
+        datetime:{
+            name:'datetime',
+            operators:['$equal','$lt','$lte','$gt','$gte'], // '=','<','<=','>','>='
+            template: templates.datetime
         },
         object:{
             name:'object',
@@ -4797,13 +4814,17 @@ angular.module('neQuery',['neLocal','neObject'])
         
         if(typeof value==='boolean') type = 'boolean';
         else if(typeof value==='number') type = 'number';
-        else if(value instanceof Date) type = 'date';
+        else if(value instanceof Date) {
+            if(value.getHours() === 0 && value.getMinutes() === 0 && value.getSeconds() === 0 && value.getMilliseconds() === 0) type = 'date';
+            else type = 'datetime';
+        }
         else if(typeof value==='string') {
             match = value.match(regexIso8601);
             if(match) milliseconds = Date.parse(match[0]);
             if (!isNaN(milliseconds)) {
                 value = new Date(milliseconds);
-                type = 'date';
+                if(value.getHours() === 0 && value.getMinutes() === 0 && value.getSeconds() === 0 && value.getMilliseconds() === 0) type = 'date';
+                else type = 'datetime';
             }
             else type = 'string';
         }
@@ -4919,7 +4940,7 @@ angular.module('neQuery',['neLocal','neObject'])
                 var vt = parseValueType(value), type = vt.type;
                 value = vt.value;
                 
-                if(type==='number' || type==='date') return {
+                if(type==='number' || type==='date' || type==='datetime') return {
                     fieldName: key,
                     typeName: type,
                     operator: '$lt',
@@ -4933,7 +4954,7 @@ angular.module('neQuery',['neLocal','neObject'])
                 var vt = parseValueType(value), type = vt.type;
                 value = vt.value;
                 
-                if(type==='number' || type==='date') return {
+                if(type==='number' || type==='date' || type==='datetime') return {
                     fieldName: key,
                     typeName: type,
                     operator: '$lte',
@@ -4947,7 +4968,7 @@ angular.module('neQuery',['neLocal','neObject'])
                 var vt = parseValueType(value), type = vt.type;
                 value = vt.value;
                 
-                if(type==='number' || type==='date') return {
+                if(type==='number' || type==='date' || type==='datetime') return {
                     fieldName: key,
                     typeName: type,
                     operator: '$gt',
@@ -4961,7 +4982,7 @@ angular.module('neQuery',['neLocal','neObject'])
                 var vt = parseValueType(value), type = vt.type;
                 value = vt.value;
                 
-                if(type==='number' || type==='date') return {
+                if(type==='number' || type==='date' || type==='datetime') return {
                     fieldName: key,
                     typeName: type,
                     operator: '$gte',
