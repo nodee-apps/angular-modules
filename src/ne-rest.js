@@ -686,7 +686,7 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
             }
             else if (typeof value === 'object') {
                 // Recurse into object
-                dateStringsToDates(value);
+                dateStringsToDates(value, useIsoJson);
             }
         }        
         return input;
