@@ -2998,7 +2998,8 @@ angular.module('neGrid',['neObject','neLocal'])
         this.pagination = { page: settings.page || this.defaultQuery.$page || 1 };
         this.page = this.pagination.page;
         this.pagesCount = 1;
-        this.query = angular.merge({}, { $page:this.page, $limit:this.limit }, this.defaultQuery);
+        this.query = angular.merge({}, settings.query || {}, { $page:this.page, $limit:this.limit }, this.defaultQuery);
+        this.sort = angular.merge({}, this.defaultSort || {}, settings.sort || {});
         this.items = [];
         this.disabled = true; // default grid state is disabled
         
