@@ -4320,15 +4320,78 @@ angular.module('neObject',[])
         return obj;
     }
     
+    function isRegExp(value) {
+        return Object.prototype.toString.call(value) === '[object RegExp]';
+    }
+    
+    function isWindow(obj) {
+        return obj && obj.window === obj;
+    }
+
+
+    function isScope(obj) {
+        return obj && obj.$evalAsync && obj.$watch;
+    }
+    
+    function defaultExcludeKeyFnc(key){
+        if(key[0] === '$' && key[1] === '$') return true;
+    }
+
+    // modified angular equals to support single dollar key prefixes
+    function deepEquals(o1, o2, excludeKeyFnc) {
+        excludeKeyFnc = excludeKeyFnc || defaultExcludeKeyFnc;
+        
+        if (o1 === o2) return true;
+        if (o1 === null || o2 === null) return false;
+        if (o1 !== o1 && o2 !== o2) return true; // NaN === NaN
+        var t1 = typeof o1, t2 = typeof o2, length, key, keySet;
+        if (t1 == t2 && t1 == 'object') {
+            if (angular.isArray(o1)) {
+                if (!angular.isArray(o2)) return false;
+                if ((length = o1.length) == o2.length) {
+                    for (key = 0; key < length; key++) {
+                        if (!deepEquals(o1[key], o2[key], excludeKeyFnc)) return false;
+                    }
+                    return true;
+                }
+            } else if (angular.isDate(o1)) {
+                if (!angular.isDate(o2)) return false;
+                return deepEquals(o1.getTime(), o2.getTime(), excludeKeyFnc);
+            } else if (isRegExp(o1)) {
+                if (!isRegExp(o2)) return false;
+                return o1.toString() == o2.toString();
+            } else {
+                if (isScope(o1) || isScope(o2) || isWindow(o1) || isWindow(o2) ||
+                    angular.isArray(o2) || angular.isDate(o2) || isRegExp(o2)) return false;
+                keySet = Object.create(null);
+                for (key in o1) {
+                    if (excludeKeyFnc(key) || angular.isFunction(o1[key])) continue;
+                    if (!deepEquals(o1[key], o2[key], excludeKeyFnc)) return false;
+                    keySet[key] = true;
+                }
+                for (key in o2) {
+                    if (!(key in keySet) &&
+                        !excludeKeyFnc(key) &&
+                        angular.isDefined(o2[key]) &&
+                        !angular.isFunction(o2[key])) return false;
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+    
     return {
-        extendReservedInstances:[File, FileList],
-        extend:extend,
+        extendReservedInstances: [File, FileList, Blob],
+        extend: extend,
         setObjValue: deepSet,
         deepSet: deepSet,
         getObjValue: deepGet,
-        deepGet:deepGet,
-        deepReplace:deepReplace,
-        deepRemove:deepRemove,
+        deepGet: deepGet,
+        deepReplace: deepReplace,
+        deepRemove: deepRemove,
+        deepEquals: deepEquals,
+        deepEqual: deepEquals,
         objectToArray: objectToArray,
         arrayToObject: arrayToObject
     };
@@ -6211,7 +6274,7 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
  */
 
 angular.module('neState', ['ngCookies'])
-.factory('NeStateService',['$timeout','$location','$rootScope','$cookies', function($timeout, $location, $rootScope, $cookies){
+.factory('NeStateService',['$timeout','$location','$rootScope','$cookies','neObject', function($timeout, $location, $rootScope, $cookies, object){
 
 	
     function encryptString(str){
@@ -6292,7 +6355,7 @@ angular.module('neState', ['ngCookies'])
             var stateObj = locationStore.parser(locationString) || {};
 
             $timeout(function(){
-                if(id) state.change(id, stateObj[id] || {}, true);
+                if(stateId) state.change(stateId, stateObj[stateId] || {}, true);
                 else for(var id in state.history) state.change(id, stateObj[id] || {}, true);
             });
         },
@@ -6325,7 +6388,7 @@ angular.module('neState', ['ngCookies'])
             var stateObj = $cookies.getObject(locationStore.prefix) || {};
 
             $timeout(function(){
-                if(id) state.change(id, stateObj[id] || {}, true);
+                if(stateId) state.change(stateId, stateObj[stateId] || {}, true);
                 else for(var id in state.history) state.change(id, stateObj[id] || {}, true);
             });
         },
@@ -6380,7 +6443,7 @@ angular.module('neState', ['ngCookies'])
         state.history[id].store.init(state, id);
 		return state.history[id];
 	};
-
+    
     StateService.prototype.changeState = 
 	StateService.prototype.change = function(id, value, disableStoreUpdate) {
 		if(!angular.isObject(value)) throw new Error('StateService: cannot change state, value have to be object and is "' +value+ '"');
@@ -6390,8 +6453,9 @@ angular.module('neState', ['ngCookies'])
 		var currIndex = state.history[id].currentStateIndex;
 		var howManyRemove = state.history[id].length ? state.history[id].length - 1 - currIndex : 0;
 
+        if(state.history[id].length > 1 && object.deepEquals(state.history[id][currIndex], value)) return state; // same state as previous, no change
+        
 		state.history[id].splice(currIndex + 1, howManyRemove);
-		state.history[id] = state.history[id];
 		state.history[id].push( angular.merge({}, value) );
 		if(state.history[id].length > state.history[id].maxHistoryStates) state.history[id].splice(0,1);
 		else state.history[id].currentStateIndex++;
@@ -6510,7 +6574,7 @@ angular.module('neState', ['ngCookies'])
 	StateService.prototype.getPrevState = function(id) {
 		if(!this.history[id]) throw new Error('StateService: there is no registered state with id "' +id+ '"');
 		var prevIndex = this.history[id].currentStateIndex - 1;
-		if(prevIndex < 0) prevIndex = 0;
+		if(prevIndex < 0) return {};
 		return this.history[id][ prevIndex ];
 	};
 

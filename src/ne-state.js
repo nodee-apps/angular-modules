@@ -5,7 +5,7 @@
  */
 
 angular.module('neState', ['ngCookies'])
-.factory('NeStateService',['$timeout','$location','$rootScope','$cookies', function($timeout, $location, $rootScope, $cookies){
+.factory('NeStateService',['$timeout','$location','$rootScope','$cookies','neObject', function($timeout, $location, $rootScope, $cookies, object){
 
 	
     function encryptString(str){
@@ -86,7 +86,7 @@ angular.module('neState', ['ngCookies'])
             var stateObj = locationStore.parser(locationString) || {};
 
             $timeout(function(){
-                if(id) state.change(id, stateObj[id] || {}, true);
+                if(stateId) state.change(stateId, stateObj[stateId] || {}, true);
                 else for(var id in state.history) state.change(id, stateObj[id] || {}, true);
             });
         },
@@ -119,7 +119,7 @@ angular.module('neState', ['ngCookies'])
             var stateObj = $cookies.getObject(locationStore.prefix) || {};
 
             $timeout(function(){
-                if(id) state.change(id, stateObj[id] || {}, true);
+                if(stateId) state.change(stateId, stateObj[stateId] || {}, true);
                 else for(var id in state.history) state.change(id, stateObj[id] || {}, true);
             });
         },
@@ -174,7 +174,7 @@ angular.module('neState', ['ngCookies'])
         state.history[id].store.init(state, id);
 		return state.history[id];
 	};
-
+    
     StateService.prototype.changeState = 
 	StateService.prototype.change = function(id, value, disableStoreUpdate) {
 		if(!angular.isObject(value)) throw new Error('StateService: cannot change state, value have to be object and is "' +value+ '"');
@@ -184,8 +184,9 @@ angular.module('neState', ['ngCookies'])
 		var currIndex = state.history[id].currentStateIndex;
 		var howManyRemove = state.history[id].length ? state.history[id].length - 1 - currIndex : 0;
 
+        if(state.history[id].length > 1 && object.deepEquals(state.history[id][currIndex], value)) return state; // same state as previous, no change
+        
 		state.history[id].splice(currIndex + 1, howManyRemove);
-		state.history[id] = state.history[id];
 		state.history[id].push( angular.merge({}, value) );
 		if(state.history[id].length > state.history[id].maxHistoryStates) state.history[id].splice(0,1);
 		else state.history[id].currentStateIndex++;
@@ -304,7 +305,7 @@ angular.module('neState', ['ngCookies'])
 	StateService.prototype.getPrevState = function(id) {
 		if(!this.history[id]) throw new Error('StateService: there is no registered state with id "' +id+ '"');
 		var prevIndex = this.history[id].currentStateIndex - 1;
-		if(prevIndex < 0) prevIndex = 0;
+		if(prevIndex < 0) return {};
 		return this.history[id][ prevIndex ];
 	};
 
