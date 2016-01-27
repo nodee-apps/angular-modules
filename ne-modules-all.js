@@ -6453,7 +6453,7 @@ angular.module('neState', ['ngCookies'])
 		var currIndex = state.history[id].currentStateIndex;
 		var howManyRemove = state.history[id].length ? state.history[id].length - 1 - currIndex : 0;
 
-        if(state.history[id].length > 1 && object.deepEquals(state.history[id][currIndex], value)) return state; // same state as previous, no change
+        if(state.history[id].length > 0 && object.deepEquals(state.history[id][currIndex], value)) return state; // same state as previous, no change
         
 		state.history[id].splice(currIndex + 1, howManyRemove);
 		state.history[id].push( angular.merge({}, value) );
