@@ -14,10 +14,10 @@ angular.module('neQuery',['neLocal','neObject'])
 .config(['neLocalProvider', function(localProvider){
     localProvider.set('default', {
         $equal:'=',
-        $lt:'&lt;',
-        $lte:'&lt;=',
-        $gt:'&gt;',
-        $gte:'&gt;=',
+        $lt:'<',
+        $lte:'<=',
+        $gt:'>',
+        $gte:'>=',
         $regex_exact:'exact match',
         $regex_contains:'contains',
         $regex_begins:'begins with',
@@ -89,8 +89,8 @@ angular.module('neQuery',['neLocal','neObject'])
                        '                <li ng-if="!query.field.disableType" class="divider"></li>'+
                        '                <li ng-repeat="operator in query.type.operators" ng-class="{\'active\':(query.operator===operator)}">'+
                        '                    <a href="" ng-click="query.setOperator(operator)">'+
-                       '			    <span ng-bind-html="operator|translate|html"></span>'+
-                       '			</a>'+
+                       '			            <span>{{operator | translate}}</span>'+
+                       '			        </a>'+
                        '                </li>'+
                        '            </ul>'+
                        '        </div>'+

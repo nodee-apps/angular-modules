@@ -5,7 +5,9 @@
  */
 
 angular.module('neLoading', [])
-.factory('neLoading',['$timeout', function($timeout) {
+.constant('neLoadingDebounce', 350) // delay of changes apply, if response will be received in lower interval than debounce, loading will not emit changes
+.constant('neLoadingEndDelay', 300) // delay of loading end, loading message hide will be delayed
+.factory('neLoading',['$timeout','neLoadingDebounce','neLoadingEndDelay', function($timeout, debounce, endDelay) {
   var service = {
     requestCount: 0,
     isLoading: function() {
@@ -13,6 +15,8 @@ angular.module('neLoading', [])
     },
     statusTimeout:null,
     status:0,
+    prevStatus:0,
+    lastStart: new Date().getTime(),
     statusListeners:[],
     fireStatusListeners: function(){
       for(var i=0;i<service.statusListeners.length;i++){
@@ -25,23 +29,34 @@ angular.module('neLoading', [])
     },
     setStatus: function(percent) {
       if(service.statusTimeout) $timeout.cancel(service.statusTimeout);
-      if(percent >= 0) service.status = percent;
+      if(percent < 0) return;
+      service.prevStatus = service.status+0;
+      service.status = percent;
+      var now = new Date().getTime();
+      if(service.prevStatus === 0 && percent > 0) service.lastStart = now;
       
+      if((now - service.lastStart) > debounce) service.fireStatusListeners();
+        
       if(service.status > 0 && service.status < 99){
-        service.statusTimeout = $timeout(function(){
-          service.setStatus(randomIncrement(service.status));  
-        }, 200, false);
+          service.statusTimeout = $timeout(function(){
+              service.setStatus(randomIncrement(service.status));
+        }, debounce, false);
       }
       else if(service.status >= 100){
-        service.statusTimeout = $timeout(function(){
-          service.setStatus(0);  
-        }, 300, false);
+        if((now - service.lastStart) > debounce){
+            service.statusTimeout = $timeout(function(){
+              service.setStatus(0);
+              service.fireStatusListeners();
+            }, endDelay, false);
+        }
+        else {
+            service.status = 0;
+            service.prevStatus = 0;
+        }
       }
-      
-      service.fireStatusListeners();
     },
     reqStarted: function(debugNotes){
-        if(service.statusTimeout) $timeout.cancel(service.statusTimeout);
+        // if(service.statusTimeout) $timeout.cancel(service.statusTimeout);
         if(service.status===0) service.setStatus(1);
         //$timeout(function(){
         service.requestCount++;
@@ -137,20 +152,10 @@ angular.module('neLoading', [])
     $httpProvider.interceptors.push('neLoadingInterceptor');
 }])
 .controller('NeLoadingCtrl',['$scope', 'neLoading', function($scope, loading) {
-  
+
     loading.statusListeners.push(function(status){
         $scope.status = status;
-        $scope.loading = loading.status > 0;
+        $scope.loading = status > 0;
         $scope.$digest();
     });
-  
-  //$scope.$watch(
-  //  function(){
-  //    return loading.status;
-  //  },
-  //  function(value){
-  //    console.log(value);
-  //    $scope.status = loading.status;
-  //    $scope.loading = loading.status > 0;
-  //});
 }]);
