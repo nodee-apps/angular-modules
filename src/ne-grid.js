@@ -35,7 +35,7 @@ angular.module('neGrid',['neObject','neLocal'])
         '        </span>' +
         '        <div class="btn-group btn-group-{{size}}">'+
         '           <button class="btn btn-default" ng-disabled="grid.nextDisabled" ng-click="grid.setPage(\'next\')"><span class="fa fa-forward"></span></button>' +
-        '           <button class="btn btn-default" ng-disabled="grid.nextDisabled" ng-click="grid.setPage(\'last\')"><span class="fa fa-fast-forward"></span></button>' +
+        '           <button class="btn btn-default" ng-disabled="grid.nextDisabled || !grid.pagesCount" ng-click="grid.setPage(\'last\')"><span class="fa fa-fast-forward"></span></button>' +
         '        </div>' +
         '    </div>' +
         '    <div class="col-sm-3 col-md-2 text-right hidden-xs">' +

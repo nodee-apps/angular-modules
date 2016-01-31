@@ -2865,7 +2865,7 @@ angular.module('neGrid',['neObject','neLocal'])
         '        </span>' +
         '        <div class="btn-group btn-group-{{size}}">'+
         '           <button class="btn btn-default" ng-disabled="grid.nextDisabled" ng-click="grid.setPage(\'next\')"><span class="fa fa-forward"></span></button>' +
-        '           <button class="btn btn-default" ng-disabled="grid.nextDisabled" ng-click="grid.setPage(\'last\')"><span class="fa fa-fast-forward"></span></button>' +
+        '           <button class="btn btn-default" ng-disabled="grid.nextDisabled || !grid.pagesCount" ng-click="grid.setPage(\'last\')"><span class="fa fa-fast-forward"></span></button>' +
         '        </div>' +
         '    </div>' +
         '    <div class="col-sm-3 col-md-2 text-right hidden-xs">' +
@@ -4457,7 +4457,8 @@ angular.module('neQuery',['neLocal','neObject'])
         
         qvalue_true:'True',
         qvalue_false:'False',
-        Search:'Search'
+        Search:'Search',
+        'Order By':'Order By'
     });
 }])
 .run(['$templateCache', function($templateCache){
@@ -4560,6 +4561,7 @@ angular.module('neQuery',['neLocal','neObject'])
     $templateCache.put('neQuery/sort.html',
                        '<div class="visible-inline-block">'+
                        '<div ng-repeat-start="sort in query.sortBy track by $index" style="display:inline-block;position:relative;margin:2px" ng-style="{\'margin-top\':$first ? \'0px\' : \'2px\'}">'+
+                       '    <small>{{::\'Order By\'|translate}}</small>'+
                        '    <div class="visible-inline-block">'+
                        '        <div class="dropdown visible-inline-block" uib-dropdown keyboard-nav>'+
                        '            <input type="text" class="input-sm dropdown-toggle" uib-dropdown-toggle ng-change="query.setSortByName(sort.fieldName, $index)" ng-model="sort.fieldName" />'+
@@ -4581,7 +4583,7 @@ angular.module('neQuery',['neLocal','neObject'])
                        '    </div>'+
                        '</div>'+
                        '<br ng-repeat-end>'+
-                       '<button ng-if="!query.sortBy.length" class="btn btn-default btn-sm" ng-click="query.addSort()"><i class="fa fa-fw fa-signal"></i></button>'+
+                       '<button ng-if="!query.sortBy.length" class="btn btn-default btn-sm" ng-click="query.addSort()"><i class="fa fa-fw fa-signal"></i> <span class="hidden-sm">{{::\'Order By\'|translate}}</span></button>'+
                        '</div>');
 }])
 .directive('neQueryValue',[function(){
@@ -4599,11 +4601,12 @@ angular.module('neQuery',['neLocal','neObject'])
     return {
         restrict:'A',
         template: '<div class="pull-left" ne-query="query"></div>'+
-        '<div class="pull-left" ne-query-sort="query"></div>'+
-        '<button class="btn btn-primary btn-sm" ng-click="searchClick()" style="margin-left:2px">'+
-        '    <i class="fa fa-fw fa-search"></i>'+
-        '    <span class="hidden-sm">{{::\'Search\' | translate}}</span>'+
-        '</button>',
+                  '<div class="pull-left hidden-xs" style="width:20px">&nbsp;</div>'+
+                  '<div class="pull-left" ne-query-sort="query"></div>'+
+                  '<button class="btn btn-primary btn-sm" ng-click="searchClick()" style="margin-left:2px">'+
+                  '    <i class="fa fa-fw fa-search"></i>'+
+                  '    <span class="hidden-sm">{{::\'Search\' | translate}}</span>'+
+                  '</button>',
         scope:{ query:'=neQuerySearch', searchClick:'&neQuerySearchClick' },
         link: function(elm, scope, attrs, ctrl){
 
@@ -4719,7 +4722,7 @@ angular.module('neQuery',['neLocal','neObject'])
         if(Object.prototype.toString.call(sortBy)==='[object Object]'){
             for(var key in sortBy){
                 query.addSort();
-                query.setSortByName(key, query.sort.length-1).direction = sortBy[key];
+                query.setSortByName(key, query.sortBy.length-1).direction = sortBy[key];
             }
         }
         return s;
@@ -4773,7 +4776,7 @@ angular.module('neQuery',['neLocal','neObject'])
         }
         
         // build sort
-        if((query.sortBy || {}).length) result = object.extend(true, result, buildSort.call(query, query.sortBy));
+        result = object.extend(true, result, buildSort.call(query, query.sortBy));
         
         return result;
     }
