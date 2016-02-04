@@ -596,7 +596,7 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
             query = angular.merge({}, defaultQuery, query || {});
         }
         
-        if(query.$page === 0) throw new Error('adad');
+        if(query.$page === 0) throw new Error('NeRestResource: query.$page is equal to zero, must be greater');
         
         // replace default pagination props by custom if defined
         if(pageKey !== '$page'){

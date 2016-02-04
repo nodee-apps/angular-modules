@@ -4469,7 +4469,7 @@ angular.module('neQuery',['neLocal','neObject'])
                        '    <div ng-if="!query.length" class="visible-inline-block">'+
                        '        <div class="dropdown visible-inline-block" uib-dropdown keyboard-nav>'+
                        '            <input type="text" class="input-sm" uib-dropdown-toggle ng-change="query.setFieldByName(query.fieldName)" ng-model="query.fieldName" />'+
-                       '            <ul ng-if="query.fields.filterByName(query.fieldName, query.field.name).length" class="dropdown-menu">'+
+                       '            <ul ng-if="query.fields.filterByName(query.fieldName, query.field.name).length" class="dropdown-menu" style="max-height:220px;overflow:auto">'+
                        '                <li ng-repeat="field in query.fields.filterByName(query.fieldName, query.field.name)" ng-class="{\'active\':(field.name===query.fieldName)}">'+
                        '                    <a href="" ng-click="query.setField(field)">'+
                        '			    {{field.name}}'+
@@ -4481,7 +4481,7 @@ angular.module('neQuery',['neLocal','neObject'])
                        '            <button ng-disabled="query.field.disableOperator" class="btn btn-default btn-sm" uib-dropdown-toggle style="width:120px;">'+
                        '                <span>{{query.operator | translate}}&nbsp;</span>'+
                        '            </button>'+
-                       '            <ul class="dropdown-menu" style="min-width:190px">'+
+                       '            <ul class="dropdown-menu" style="min-width:190px;max-height:220px;overflow:auto">'+
                        '                <li ng-if="!query.field.disableType" class="text-center">'+
                        '                    <div class="btn-group btngroup-xs">'+
                        '                        <button class="btn btn-default btn-xs" ng-class="{\'btn-success\':(query.type.name===type)}" style="padding:2px;" uib-tooltip="{{\'qtype_\'+type | translate}}" ng-repeat="type in query.types" ng-click="query.setType(type);$event.stopPropagation();">'+
@@ -4565,7 +4565,7 @@ angular.module('neQuery',['neLocal','neObject'])
                        '    <div class="visible-inline-block">'+
                        '        <div class="dropdown visible-inline-block" uib-dropdown keyboard-nav>'+
                        '            <input type="text" class="input-sm dropdown-toggle" uib-dropdown-toggle ng-change="query.setSortByName(sort.fieldName, $index)" ng-model="sort.fieldName" />'+
-                       '            <ul ng-if="query.fields.filterByName(sort.fieldName, sort.name).length" class="dropdown-menu">'+
+                       '            <ul ng-if="query.fields.filterByName(sort.fieldName, sort.name).length" class="dropdown-menu" style="max-height:220px;overflow:auto">'+
                        '                <li ng-repeat="field in query.fields.filterByName(sort.fieldName, sort.name)" ng-class="{\'active\':(field.name===sort.fieldName)}">'+
                        '                    <a href="" ng-click="query.setSortField(field,$parent.$index)">'+
                        '        			    {{field.name}}'+
@@ -4728,7 +4728,7 @@ angular.module('neQuery',['neLocal','neObject'])
         return s;
     }
     
-    function build(query){
+    function build(query, excludeSort){
         var result = {}, value;
         result = object.extend(true, result, query.options); // add query options to result
         
@@ -4746,7 +4746,7 @@ angular.module('neQuery',['neLocal','neObject'])
             if(g===0) {
                 var presult;
                 for(var i=0;i<andGroups[g].length;i++){
-                    presult = build(andGroups[g][i]);
+                    presult = build(andGroups[g][i], true);
                     
                     // on key conflicts, use custom merge method if defined
                     if(andGroups[g][i].field.merge) for(var pkey in presult){
@@ -4776,7 +4776,7 @@ angular.module('neQuery',['neLocal','neObject'])
         }
         
         // build sort
-        result = object.extend(true, result, buildSort.call(query, query.sortBy));
+        if(!excludeSort) result = object.extend(true, result, buildSort.call(query, query.sortBy));
         
         return result;
     }
@@ -5226,12 +5226,12 @@ angular.module('neQuery',['neLocal','neObject'])
         
         q.options = {}; // additional query options
         q.sortBy = [];
-        q.build = function(){ return build.call(this, this); };
+        q.build = function(excludeSort){ return build.call(this, this, excludeSort); };
         q.parse = function(builtQuery, logical){ return parse.call(this, builtQuery, logical); };
         q.fill = function(builtQuery){ 
             this.splice(0, this.length); // clear array
             this.parse(builtQuery); // start with first child
-            if(!this.parent && this.length===0) this.append('AND'); // if this is root query and there is no child, add one
+            if((!this.parent || !this.parent()) && this.length===0) this.append('AND'); // if this is root query and there is no child, add one
             return q;
         };
         q.clear = clear;
@@ -5255,6 +5255,10 @@ angular.module('neQuery',['neLocal','neObject'])
         q.setSortByName = setSortByName;
         q.setSortField = setSortField;
         
+        var parent;
+        q.parent = q.getParent = function(){ return parent; };
+        q.setParent = function(newParent){ parent = newParent; };
+        
         // set initial query state
         q.reset();
         
@@ -5263,23 +5267,24 @@ angular.module('neQuery',['neLocal','neObject'])
     
     function append(logical){
         var q = this.newQuery(logical);
-        q.parent = this;
+        // make reference to parent non enumerable to prevent stack overflow when merging (it is circular reference)
+        q.setParent(this);
         this.push(q);
         return q;
     }
     
     function levelDown(logical){
         var self = this;
-        if(!self.parent) return;
+        if(!self.parent()) return;
         
         // if this is only child of parent disable levelDovn
-        if(self.parent.length<=1) return;
+        if(self.parent().length<=1) return;
         
-        var index = self.parent.indexOf(self);
+        var index = self.parent().indexOf(self);
         var wrapper = self.next(self.logical);
-        self.parent.splice(index, 1); // remove element from parent
+        self.parent().splice(index, 1); // remove element from parent
         self.logical = 'AND'; // default logical if first element
-        self.parent = wrapper; // now, parent is wrapper
+        self.setParent(wrapper); // now, parent is wrapper
         wrapper.push(self); // append element to wrapper
         
         return wrapper;
@@ -5287,28 +5292,28 @@ angular.module('neQuery',['neLocal','neObject'])
     
     function next(logical){
         var self = this;
-        if(!self.parent) return;
+        if(!self.parent()) return;
         
-        var index = self.parent.indexOf(self);
+        var index = self.parent().indexOf(self);
         var q = this.newQuery(logical);
-        q.parent = self.parent;
+        q.setParent(self.parent());
         
-        self.parent.splice(index+1,0,q);
+        self.parent().splice(index+1,0,q);
         return q;
     }
     
     function remove(){
         var self = this;
-        if(!self.parent) return;
+        if(!self.parent()) return;
         
         // don't remove last root element, just reset field
-        if(!self.parent.parent && self.parent.length===1) return self.reset();
+        if(!self.parent().parent() && self.parent().length===1) return self.reset();
         
         // if removing last child of element, remove also element
-        if(self.parent.length===1) return self.parent.remove();
+        if(self.parent().length===1) return self.parent().remove();
         
-        var index = self.parent.indexOf(self);
-        self.parent.splice(index,1);
+        var index = self.parent().indexOf(self);
+        self.parent().splice(index,1);
         self = null;
     }
     
@@ -6159,7 +6164,7 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
             query = angular.merge({}, defaultQuery, query || {});
         }
         
-        if(query.$page === 0) throw new Error('adad');
+        if(query.$page === 0) throw new Error('NeRestResource: query.$page is equal to zero, must be greater');
         
         // replace default pagination props by custom if defined
         if(pageKey !== '$page'){
