@@ -4481,7 +4481,7 @@ angular.module('neQuery',['neLocal','neObject'])
                        '            <button ng-disabled="query.field.disableOperator" class="btn btn-default btn-sm" uib-dropdown-toggle style="width:120px;">'+
                        '                <span>{{query.operator | translate}}&nbsp;</span>'+
                        '            </button>'+
-                       '            <ul class="dropdown-menu" style="min-width:190px;max-height:220px;overflow:auto">'+
+                       '            <ul class="dropdown-menu" style="min-width:210px;overflow:auto">'+
                        '                <li ng-if="!query.field.disableType" class="text-center">'+
                        '                    <div class="btn-group btngroup-xs">'+
                        '                        <button class="btn btn-default btn-xs" ng-class="{\'btn-success\':(query.type.name===type)}" style="padding:2px;" uib-tooltip="{{\'qtype_\'+type | translate}}" ng-repeat="type in query.types" ng-click="query.setType(type);$event.stopPropagation();">'+
@@ -4728,6 +4728,20 @@ angular.module('neQuery',['neLocal','neObject'])
         return s;
     }
     
+    function isKeyConflict(dest, src){
+        if(['string','number','boolean'].indexOf(typeof dest) > -1) return true;
+        if(src === null || src === undefined || typeof src === 'function') return false;
+        
+        // primitive type will cause override
+        if(['string','number','boolean'].indexOf(typeof src) > -1) return true;
+        else { // src is object
+            for(var key in src){
+                if(dest[key] !== undefined && dest[key] !== null) return true;
+            }
+        }
+        return false;
+    }
+    
     function build(query, excludeSort){
         var result = {}, value;
         result = object.extend(true, result, query.options); // add query options to result
@@ -4744,18 +4758,35 @@ angular.module('neQuery',['neLocal','neObject'])
             
             // no OR query, just ands
             if(g===0) {
-                var presult;
-                for(var i=0;i<andGroups[g].length;i++){
-                    presult = build(andGroups[g][i], true);
+                var presult, 
+                    wrappedByAnd = false, 
+                    andGroup = andGroups[g];
+                
+                for(var i=0;i<andGroup.length;i++){
+                    presult = build(andGroup[i], true);
                     
-                    // on key conflicts, use custom merge method if defined
-                    if(andGroups[g][i].field.merge) for(var pkey in presult){
-                        if(result[ pkey ]!==undefined){
-                            result = andGroups[g][i].field.merge(pkey, presult, result);
+                    // check if there is key conflict:
+                    // 1. no conflict scenario:  pkey:{ $lte:5 }, pkey:{ $gte:1 }
+                    // 2. conflict scenario:  pkey:{ $regex:'5' }, pkey:{ $regex:'1' } or pkey:123, pkey:123
+                    for(var pkey in presult){
+                        if(result[ pkey ] !== undefined && result[ pkey ] !== null){
+                            if(andGroup[i].field.merge) result = andGroup[i].field.merge(pkey, presult, result);
+                            else if(!isKeyConflict(result[pkey], presult[pkey])){ // check keys conflicts
+                                result[pkey] = object.extend(true, result[pkey], presult[pkey]);
+                            }
+                            else {
+                                // key conflict, and field has no merge method, need to wrap it by AND
+                                delete result[ pkey ]; // this field will be inside $and
+                                result = object.extend(true, result, queries['AND'].build(andGroup));
+                                wrappedByAnd = true;
+                                break;
+                            }
                         }
                         else result[pkey] = presult[pkey];
                     }
-                    else result = object.extend(true, result, presult);
+                    
+                    // don't continue if andGroup was wrapped by and
+                    if(wrappedByAnd) break;
                 }
             }
             // mixed ors and ands
@@ -4794,7 +4825,7 @@ angular.module('neQuery',['neLocal','neObject'])
             }
             else if(!queries[key] && (key[0]===queryOptionKeyPrefix || queryOptionKeys.indexOf(key)!==-1)){
                 // this is reserved key name
-                query.options[key] = builtQuery[key]; // store values to 
+                query.options[key] = builtQuery[key];
             }
             else keys.push(key);
         }
@@ -4850,9 +4881,12 @@ angular.module('neQuery',['neLocal','neObject'])
                 
                 for(var i=0;i<result.queries.length;i++){
                     // if there is only one OR, or AND in query, no need to append child, just sibling
-                    if(keys.length===1) query.parse(result.queries[i], result.logical);
+                    // if parent logical !== result logical, and it is first item inside logical group, its logical will be parent logical
+                    // pseudo example 1: or[ and[1,2], or[1,2], and[1,2] ]
+                    // pseudo example 2: and[ or[1,2], and[1,2], or[1,2] ]
+                    if(keys.length===1) query.parse(result.queries[i], i===0 && parentLogical ? parentLogical : result.logical);
                     
-                    // if nested ors, create one child and then append to it all remaining queries
+                    // if mixed ANDs or ORs with other keys, create one child and then append to it all remaining queries
                     else if(child) child.parse(result.queries[i], result.logical);
                     else {
                         child = query.append(parentLogical);
@@ -4915,7 +4949,7 @@ angular.module('neQuery',['neLocal','neObject'])
             build: function(value){
                 var $and = [];
                 for(var i=0;i<(value.length||0);i++){
-                    $and.push(build(value[i]));
+                    $and.push(build(value[i], true));
                 }
                 return { $and: $and };
             }
@@ -4924,7 +4958,7 @@ angular.module('neQuery',['neLocal','neObject'])
             build: function(value){
                 var $or = [];
                 for(var i=0;i<(value.length||0);i++){
-                    $or.push(build(value[i]));
+                    $or.push(build(value[i], true));
                 }
                 return { $or: $or };
             }
@@ -5328,7 +5362,7 @@ angular.module('neQuery',['neLocal','neObject'])
         }
         else {
             q.field = q.field || {};
-            q.type = q.type || q.types[0];
+            q.type = types[ q.type || q.types[0] ];
             q.operator = q.type.operators[0];
         }
         q.value = null;
