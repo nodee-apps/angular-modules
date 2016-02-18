@@ -4468,10 +4468,10 @@ angular.module('neQuery',['neLocal','neObject'])
                        '    <small ng-if="!$first && query.logical===\'OR\' && !query.length">{{query.logical | translate}}<br></small>'+
                        '    <div ng-if="!query.length" class="visible-inline-block">'+
                        '        <div class="dropdown visible-inline-block" uib-dropdown keyboard-nav>'+
-                       '            <input type="text" class="input-sm" uib-dropdown-toggle ng-change="query.setFieldByName(query.fieldName)" ng-model="query.fieldName" />'+
+                       '            <input type="text" class="input-sm" uib-dropdown-toggle ng-change="query.setFieldByName(query.fieldName);onChange()" ng-model="query.fieldName"/>'+
                        '            <ul ng-if="query.fields.filterByName(query.fieldName, query.field.name).length" class="dropdown-menu" style="max-height:220px;overflow:auto">'+
                        '                <li ng-repeat="field in query.fields.filterByName(query.fieldName, query.field.name)" ng-class="{\'active\':(field.name===query.fieldName)}">'+
-                       '                    <a href="" ng-click="query.setField(field)">'+
+                       '                    <a href="" ng-click="query.setField(field);onChange()">'+
                        '			    {{field.name}}'+
                        '			</a>'+
                        '                </li>'+
@@ -4491,7 +4491,7 @@ angular.module('neQuery',['neLocal','neObject'])
                        '                </li>'+
                        '                <li ng-if="!query.field.disableType" class="divider"></li>'+
                        '                <li ng-repeat="operator in query.type.operators" ng-class="{\'active\':(query.operator===operator)}">'+
-                       '                    <a href="" ng-click="query.setOperator(operator)">'+
+                       '                    <a href="" ng-click="query.setOperator(operator);onChange()">'+
                        '			            <span>{{operator | translate}}</span>'+
                        '			        </a>'+
                        '                </li>'+
@@ -4499,10 +4499,10 @@ angular.module('neQuery',['neLocal','neObject'])
                        '        </div>'+
                        '        <div class="visible-inline-block" ne-query-value="query"></div>'+
                        '        <div class="btn-group btn-group-xs">'+
-                       '            <button class="btn btn-default" ng-click="query.next(\'AND\')">{{::\'AND\' | translate}}</button>'+
-                       '            <button class="btn btn-default" ng-click="query.next(\'OR\')">{{::\'OR\' | translate}}</button>'+
-                       '            <button class="btn btn-default" ng-click="query.levelDown()"><i class="fa fa-fw fa-level-down"></i></button>'+
-                       '            <button class="btn btn-default" ng-click="close();query.remove()"><i class="fa fa-fw fa-minus"></i></button>'+
+                       '            <button class="btn btn-default" ng-click="query.next(\'AND\');onChange()">{{::\'AND\' | translate}}</button>'+
+                       '            <button class="btn btn-default" ng-click="query.next(\'OR\');onChange()">{{::\'OR\' | translate}}</button>'+
+                       '            <button class="btn btn-default" ng-click="query.levelDown();onChange()"><i class="fa fa-fw fa-level-down"></i></button>'+
+                       '            <button class="btn btn-default" ng-click="close();query.remove();onChange()"><i class="fa fa-fw fa-minus"></i></button>'+
                        '        </div>'+
                        '    </div>'+
                        '    <div ng-if="query.length" class="visible-inline-block" style="position:relative;">'+
@@ -4524,7 +4524,8 @@ angular.module('neQuery',['neLocal','neObject'])
                        '       uib-datepicker-popup '+
                        '       is-open="query.value_opened" '+
                        '       ng-click="query.value_opened=!query.value_opened" '+
-                       '       ng-model="query.value"/>');
+                       '       ng-model="query.value"'+
+                       '       ng-change="onChange()"/>');
     
     $templateCache.put('neQuery/datetime.html',
                        '<input type="text" '+
@@ -4533,15 +4534,17 @@ angular.module('neQuery',['neLocal','neObject'])
                        '       show-seconds="true" '+
                        '       is-open="query.value_opened" '+
                        '       ng-click="query.value_opened=!query.value_opened" '+
-                       '       ng-model="query.value"/>');
+                       '       ng-model="query.value"' +
+                       '       ng-change="onChange()"/>');
     
     $templateCache.put('neQuery/number.html',
-                       '<input type="number" class="input-sm" ng-model="query.value" style="width:142px;"/>');
+                       '<input type="number" class="input-sm" ng-model="query.value" ng-change="onChange()" style="width:142px;"/>');
     
     $templateCache.put('neQuery/list.html',
                        '<select class="input-sm" '+
                        '        ng-model="query.value" '+
                        '        ng-options="(value | translate) for value in query.field.values" '+
+                       '        ng-change="onChange()" '+
                        '        style="width:142px;">'+
                        '</select>');
     
@@ -4549,11 +4552,12 @@ angular.module('neQuery',['neLocal','neObject'])
                        '<select class="input-sm" '+
                        '        ng-model="query.value" '+
                        '        ng-options="(\'qvalue_\'+value | translate) for value in [true,false]" '+
+                       '        ng-change="onChange()" '+
                        '        style="width:142px;">'+
                        '</select>');
     
     $templateCache.put('neQuery/string.html',
-                       '<input type="text" class="input-sm" ng-model="query.value"/>');
+                       '<input type="text" class="input-sm" ng-model="query.value" ng-change="onChange()"/>');
     
     $templateCache.put('neQuery/disabled.html',
                        '<input type="text" disabled="disabled" class="input-sm" ng-model="query.value"/>');
@@ -4564,7 +4568,7 @@ angular.module('neQuery',['neLocal','neObject'])
                        '    <small>{{::\'Order By\'|translate}}</small>'+
                        '    <div class="visible-inline-block">'+
                        '        <div class="dropdown visible-inline-block" uib-dropdown keyboard-nav>'+
-                       '            <input type="text" class="input-sm dropdown-toggle" uib-dropdown-toggle ng-change="query.setSortByName(sort.fieldName, $index)" ng-model="sort.fieldName" />'+
+                       '            <input type="text" class="input-sm dropdown-toggle" uib-dropdown-toggle ng-change="query.setSortByName(sort.fieldName, $index);onChange()" ng-model="sort.fieldName" />'+
                        '            <ul ng-if="query.fields.filterByName(sort.fieldName, sort.name).length" class="dropdown-menu" style="max-height:220px;overflow:auto">'+
                        '                <li ng-repeat="field in query.fields.filterByName(sort.fieldName, sort.name)" ng-class="{\'active\':(field.name===sort.fieldName)}">'+
                        '                    <a href="" ng-click="query.setSortField(field,$parent.$index)">'+
@@ -4574,16 +4578,16 @@ angular.module('neQuery',['neLocal','neObject'])
                        '            </ul>'+
                        '        </div>'+
                        '        <div class="btn-group btn-group-xs">'+
-                       '            <button class="btn btn-default" ng-click="query.toggleSortDirection($index)">'+
+                       '            <button class="btn btn-default" ng-click="query.toggleSortDirection($index);onChange()">'+
                        '                <i class="fa fa-fw" ng-class="{\'fa-sort-amount-asc\':sort.direction===1,\'fa-sort-amount-desc\':sort.direction===-1}"></i>'+
                        '            </button>'+
-                       '            <button class="btn btn-default" ng-click="query.addSort($index)"><i class="fa fa-fw fa-plus"></i></button>'+
-                       '            <button class="btn btn-default" ng-click="query.removeSort($index)"><i class="fa fa-fw fa-minus"></i></button>'+
+                       '            <button class="btn btn-default" ng-click="query.addSort($index);onChange()"><i class="fa fa-fw fa-plus"></i></button>'+
+                       '            <button class="btn btn-default" ng-click="query.removeSort($index);onChange()"><i class="fa fa-fw fa-minus"></i></button>'+
                        '        </div>'+
                        '    </div>'+
                        '</div>'+
                        '<br ng-repeat-end>'+
-                       '<button ng-if="!query.sortBy.length" class="btn btn-default btn-sm" ng-click="query.addSort()"><i class="fa fa-fw fa-signal"></i> <span class="hidden-sm">{{::\'Order By\'|translate}}</span></button>'+
+                       '<button ng-if="!query.sortBy.length" class="btn btn-default btn-sm" ng-click="query.addSort();onChange()"><i class="fa fa-fw fa-signal"></i> <span class="hidden-sm">{{::\'Order By\'|translate}}</span></button>'+
                        '</div>');
 }])
 .directive('neQueryValue',[function(){
@@ -4600,16 +4604,16 @@ angular.module('neQuery',['neLocal','neObject'])
 .directive('neQuerySearch',[function(){
     return {
         restrict:'A',
-        template: '<div class="pull-left" ne-query="query"></div>'+
+        template: '<div class="pull-left" ne-query="query" ne-query-change="onChange()"></div>'+
                   '<div class="pull-left hidden-xs" style="width:20px">&nbsp;</div>'+
-                  '<div class="pull-left" ne-query-sort="query"></div>'+
+                  '<div class="pull-left" ne-query-sort="query" ne-query-sort-change="onChange()"></div>'+
                   '<button class="btn btn-primary btn-sm" ng-click="searchClick()" style="margin-left:2px">'+
                   '    <i class="fa fa-fw fa-search"></i>'+
                   '    <span class="hidden-sm">{{::\'Search\' | translate}}</span>'+
                   '</button>',
-        scope:{ query:'=neQuerySearch', searchClick:'&neQuerySearchClick' },
-        link: function(elm, scope, attrs, ctrl){
-
+        scope:{ query:'=neQuerySearch', searchClick:'&neQuerySearchClick', onChange:'&neQuerySearchChange' },
+        link: function(scope, elm, attrs, ctrl){
+            
         }
     };
 }])
@@ -4617,8 +4621,8 @@ angular.module('neQuery',['neLocal','neObject'])
     return {
         restrict:'A',
         templateUrl: 'neQuery/query.html',
-        scope:{ query:'=neQuery' },
-        link: function(elm, scope, attrs, ctrl){
+        scope:{ query:'=neQuery', onChange:'&neQueryChange' },
+        link: function(scope, elm, attrs, ctrl){
 
         }
     };
@@ -4627,8 +4631,8 @@ angular.module('neQuery',['neLocal','neObject'])
     return {
         restrict:'A',
         templateUrl: 'neQuery/sort.html',
-        scope:{ query:'=neQuerySort' },
-        link: function(elm, scope, attrs, ctrl){
+        scope:{ query:'=neQuerySort', onChange:'&neQuerySortChange' },
+        link: function(scope, elm, attrs, ctrl){
 
         }
     };
