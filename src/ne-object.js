@@ -5,7 +5,7 @@
  */
 
 angular.module('neObject',[])
-.factory('neObject', [function(){
+.factory('neObject', ['$timeout', function($timeout){
     
     var hasOwn = Object.prototype.hasOwnProperty;
     function isPlainObject(obj) {
@@ -107,6 +107,7 @@ angular.module('neObject',[])
             else parentObj[key] = value;
         }
     }
+    
     /**
      * Define cascading props in objects in namespace separated by dot,
      * if props are on lower level, it will create empty object
@@ -275,6 +276,35 @@ angular.module('neObject',[])
         return false;
     }
     
+    
+    /**
+     * Service function that helps to avoid multiple calls of a function (typically save()) during angular digest cycle.
+     * $apply will be called after original function returns;
+     *
+     * @example:
+     *  $scope.save = debounce(function(order){
+     *     // POST your order here ...$http....
+     *     // debounce() will make sure save() will be called only once
+     *   });
+     */
+    function debounce(fn, timeout, apply){ // debounce fn
+        timeout = angular.isUndefined(timeout) ? 0 : timeout;
+        apply = angular.isUndefined(apply) ? true : apply; // !!default is true! most suitable to my experience
+        var prevTimeout;
+        return function(){ // intercepting fn
+            if(prevTimeout) $timeout.cancel(prevTimeout);
+            var that = this;
+            var argz = arguments;
+            
+            prevTimeout = $timeout(function(){
+                prevTimeout = null;
+                fn.apply(that, argz);
+            }, timeout, apply);
+            
+            return prevTimeout;
+        };
+    }
+    
     return {
         extendReservedInstances: [File, FileList, Blob],
         extend: extend,
@@ -287,6 +317,7 @@ angular.module('neObject',[])
         deepEquals: deepEquals,
         deepEqual: deepEquals,
         objectToArray: objectToArray,
-        arrayToObject: arrayToObject
+        arrayToObject: arrayToObject,
+        debounce: debounce
     };
 }]);

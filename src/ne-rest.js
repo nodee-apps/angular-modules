@@ -263,10 +263,12 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
         for(var i=0;i<urlParams.length;i++){
             paramValue = object.deepGet(params, urlParams[i]);
             value = urlParams[i] === '_command' ? cmdName : (paramValue===undefined ? '' : paramValue);
+            if(typeof value === 'string') value = value.replace(/\//g, '%2F').replace(/\?/g, '%3F').replace(/#/g,'%23'); // escape "/","?","#"
             url = replaceStringAll(url,'{' +urlParams[i]+ '}', stringifyWithoutQuotes(value));
         }
         
-        return unifyUrlPath(url, true);
+        url = unifyUrlPath(url, true);
+        return url.indexOf('?') > -1 ? url.replace(/([^\/])\?/,'$1/?') : url +'/'; // add last slash to ensure server will know this is resource path, not static file
     }                         
                                 
     function queryStringBuilder(query, cmdName) {

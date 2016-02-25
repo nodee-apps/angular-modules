@@ -379,12 +379,13 @@ angular.module('neTree',['neObject'])
         var tree = this;
         var idKey = tree.idKey;
         var ancKey = tree.ancestorsReferenceKey;
-        var parentKey = tree.ancestorsReferenceKey;
+        var parentKey = tree.parentReferenceKey;
         var childrenKey = tree.childrenReferenceKey;
         var countKey = tree.childrenCountKey;
+        var childAlreadyRegistered = false;
         
         if(ancKey && !remove) {
-            var ancs = object.deepGet(parent, ancKey) || [];
+            var ancs = [].concat(object.deepGet(parent, ancKey) || []);
             ancs.push( object.deepGet(parent, idKey) );
             object.deepSet(child, ancKey, ancs);
         }
@@ -398,7 +399,10 @@ angular.module('neTree',['neObject'])
             var childIds = object.deepGet(parent, childrenKey) || [];
             var childId = object.deepGet(child, idKey);
             
-            if(!remove) childIds.push( object.deepGet(child, idKey) );
+            if(!remove) {
+                if(childIds.indexOf(childId) === -1) childIds.push( childId );
+                else childAlreadyRegistered = true;
+            }
             else {
                 var index = childIds.indexOf( childId );
                 if(index > -1) childIds.splice(index, 1);
@@ -406,9 +410,9 @@ angular.module('neTree',['neObject'])
             object.deepSet(parent, childrenKey, childIds);
         }
         
-        if(countKey) {
+        if(countKey && !childAlreadyRegistered) {
             var count = object.deepGet(parent, countKey) || 0;
-            object.deepSet(parent, countKey, count+( child ? 1 : -1 ));
+            object.deepSet(parent, countKey, count+( !remove ? 1 : -1 ));
         }
     }
     
@@ -705,13 +709,13 @@ angular.module('neTree',['neObject'])
             parent = null;
         }
         
-        var child = item;
+        // ad parentId or ancestors
         tree.maintainReferences(parent, item);
         
         tree.getResourceMethod('create', item, parent)(item, function(newItem){
             item = angular.merge(item, newItem);
             
-            if(appendChild && parent) {
+            if(appendChild && parent) { // add childId if childReferenceKey
                 tree.maintainReferences(parent, item);
             }
             
