@@ -127,21 +127,21 @@ angular.module('neLoading', [])
     request: function(config) {
       // Check to make sure this request hasn't already been cached and that
       // the requester didn't explicitly ask us to ignore this request:
-      if (!config.ignoreLoadingBar && !isCached(config)) {
+      if (!config.ignoreLoading && !isCached(config)) {
         loading.reqStarted();
       }
       return config;
     },
     
     response: function(response) {
-      if (!isCached(response.config)) {
+      if(!response.config.ignoreLoading && !isCached(response.config)) {
         loading.reqEnded();
       }
       return response;
     },
     
     responseError: function(rejection) {
-      if (!isCached(rejection.config)) {
+      if (!rejection.config.ignoreLoading && !isCached(rejection.config)) {
         loading.reqEnded();
       }
       return $q.reject(rejection);

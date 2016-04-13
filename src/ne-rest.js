@@ -263,7 +263,7 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
         for(var i=0;i<urlParams.length;i++){
             paramValue = object.deepGet(params, urlParams[i]);
             value = urlParams[i] === '_command' ? cmdName : (paramValue===undefined ? '' : paramValue);
-            if(typeof value === 'string') value = value.replace(/\//g, '%2F').replace(/\?/g, '%3F').replace(/#/g,'%23'); // escape "/","?","#"
+            if(typeof value === 'string') value = encodeURIComponent(value).replace(/\//g, '%2F').replace(/\?/g, '%3F').replace(/#/g,'%23'); // escape "/","?","#"
             url = replaceStringAll(url,'{' +urlParams[i]+ '}', stringifyWithoutQuotes(value));
         }
         
@@ -444,6 +444,7 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
         var url = httpOpts.url;
         var headers = httpOpts.headers;
         var data = httpOpts.data;
+        var ignoreLoading = httpOpts.ignoreLoading;
         var fd = new FormData();
         
         for(var key in data) {
@@ -469,7 +470,7 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
             };
             
             xhrListeners('removeEventListener');
-            loading.reqEnded();
+            if(!ignoreLoading) loading.reqEnded();
             
             if(status >= 200 && status <= 299) handleSuccess(query, opts, cmdName, successCbs)(response);
             else handleError(query, opts, cmdName, errorCbs)(response);
@@ -493,7 +494,7 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
         
         $timeout(function(){
             xhrListeners('addEventListener');
-            loading.reqStarted(); // show loading notification
+            if(!ignoreLoading) loading.reqStarted(); // show loading notification
             xhr.open('POST', url, true);
             xhr.send(fd);
         });
@@ -575,6 +576,7 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
             urlEndSlash = cmdOpts.urlEndSlash || opts.urlEndSlash,
             queryStringBuilder = cmdOpts.queryStringBuilder || opts.queryStringBuilder,
             defaultQuery = cmdOpts.defaultQuery || opts.defaultQuery,
+            ignoreLoading = cmdOpts.ignoreLoading!==undefined ? cmdOpts.ignoreLoading : opts.ignoreLoading,
             transformRequest = cmdOpts.transformRequest,
             idKey = cmdOpts.idKey || opts.idKey,
             pageKey = cmdOpts.queryPageKey || opts.queryPageKey,
@@ -628,7 +630,8 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
             url: urlPath + queryString,
             method: method,
             data: applyTransformators(data, transformRequest),
-            headers: headers
+            headers: headers,
+            ignoreLoading: ignoreLoading
         };
         
         if(method === 'post-multipart' || method === 'upload') upload.call(resource, cmdName, query, httpOpts, successCbs, errorCbs, progressCbs);

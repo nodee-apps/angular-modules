@@ -531,7 +531,7 @@ angular.module('neTree',['neObject'])
             if(!tree.interceptLoad || (tree.interceptLoad && tree.interceptLoad((parent||tree).$query, parent)!==false)){
                 
                 var query = parent ? (parent.$query || {}) : tree.$query || {};
-                query = angular.merge({}, { $page:1, $limit:(tree.$limit || tree.defaultLimit) }, query, tree.getChildrenQuery(parent));
+                query = angular.merge({}, { $page:1, $limit:(tree.$limit || tree.defaultLimit) }, tree.defaultQuery, query, tree.getChildrenQuery(parent));
                 if(query.$sort) query.$sort = angular.merge({}, tree.defaultSort ,query.$sort);
                 
                 if(parent) parent.$query = query;

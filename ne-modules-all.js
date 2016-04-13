@@ -5,7 +5,7 @@
  */
 
 angular.module('neContentEditors',[])
-.service('neMarkdown', ['$document','neReMarked', 'neMarked', function($document, reMarked, marked){
+.service('neMarkdown', ['$document','NeRemarked', 'neMarked', function($document, ReMarked, marked){
     var reMarkedOptions = {
 	link_list:false,	// render links as references, create link list as appendix
 	h1_setext:false,	// underline h1 headers
@@ -23,7 +23,7 @@ angular.module('neContentEditors',[])
 	hash_lnks:false,    // anchors w/hash hrefs as links
 	br_only:false    // avoid using "  " as line break indicator
     };
-    var reMarker = new reMarked(reMarkedOptions);
+    var reMarker = new ReMarked(reMarkedOptions);
     
     this.parseHTML = function(htmlString){
 	return reMarker.render(htmlString || '');
@@ -328,6 +328,7 @@ angular.module('neContentEditors',[])
 		tr = doc.createElement('tr');
 		for (var j=0; j < cols; j++) {
 		    th = doc.createElement('th');
+            th.innerHTML = 'col '+(j+1);
 		    br = doc.createElement('br');
 		    th.appendChild(br);
 		    tr.appendChild(th);
@@ -338,6 +339,7 @@ angular.module('neContentEditors',[])
 		    tr = doc.createElement('tr');
 		    for (var j=0; j < cols; j++) {
 			td = doc.createElement('td');
+            td.innerHTML = 'row '+(i+1);
 			br = doc.createElement('br');
 			td.appendChild(br);
 			tr.appendChild(td);
@@ -362,7 +364,7 @@ angular.module('neContentEditors',[])
     
     return this;
 }])
-.directive('neContenteditable', ['$sce', function($sce) {
+.directive('contenteditable', ['$sce', function($sce) {
     return {
 	restrict: 'A', // only activate on element attribute
 	require: '?ngModel', // get a hold of NgModelController
@@ -371,146 +373,152 @@ angular.module('neContentEditors',[])
 	    
 	    // Specify how UI should be updated
 	    ngModel.$render = function() {
-		element.html(ngModel.$viewValue || '');
+		  element.html(ngModel.$viewValue || '');
 	    };
 	    
 	    // Listen for change events to enable binding
 	    element.on('blur keyup change', function() {
-		scope.$apply(read);
+		  scope.$apply(read);
 	    });
 	    read(true); // initialize
 	    
 	    // Write data to the model
 	    function read(firstTime) {
-		var html = element.html();
-		// When we clear the content editable the browser leaves a <br> behind
-		// If strip-br attribute is provided then we strip this out
-		if(attrs.stripBr && html === '<br>') {
-		    html = '';
-		}
-		
-		// set model value from inner html only if value is not already set
-		if((firstTime && html) || !firstTime) ngModel.$setViewValue(html);
+            var html = element.html();
+            // When we clear the content editable the browser leaves a <br> behind
+            // If strip-br attribute is provided then we strip this out
+            if(attrs.stripBr && html === '<br>') {
+                html = '';
+            }
+
+            // set model value from inner html only if value is not already set
+            if((firstTime && html) || !firstTime) ngModel.$setViewValue(html);
 	    }
 	}
     };
 }])
 .directive('neSelectionModel', [function(){
     return {
-	restrict:'A',
+        restrict:'A',
         require:'^ngModel',
-	scope:{ ngSelModel:'=' },
-	link: function(scope, element, attrs, ctrl){
+        scope:{ neSelectionModel:'=' },
+        link: function(scope, element, attrs, ctrl){
             if(element[0].nodeName !== 'TEXTAREA' && attrs.contenteditable!=='true')
-		throw new Error('ngSelModel directive can be used only on <textarea> or contentEditable="true" element');
-            
-	    function TextAreaSelection(){
-		
-		function setSelection(e, start, end){
-		    e.focus();
-		    if(e.setSelectionRange)
-			e.setSelectionRange(start, end);
-		    else if(e.createTextRange) {
-			e = e.createTextRange();
-			e.collapse(true);
-			e.moveEnd('character', end);
-			e.moveStart('character', start);
-			e.select();
-		    }
-		}
-		
-		function getSelection(){
-		    var textarea = this;
-		    var selStart = textarea.selectionStart;
-		    var selEnd = textarea.selectionEnd;
-			
-		    scope.$apply(function(){
-			scope.ngSelModel = {
-			    parent: angular.element(textarea),
-			    value: textarea.value.substring(selStart, selEnd),
-			    inputValue: textarea.value,
-			    start: selStart,
-			    end: selEnd,
-			    select: function(start, end){
-				setTimeout(function(){
-				    setSelection(textarea, start, end);
-				    getSelection.call(textarea);
-				},0);
-			    }
-			};
-		    });
-		}
-		
-		this.setSelection = setSelection;
-		this.getSelection = getSelection;
-	    }
-            
-	    function ContentEditSelection(element){
-		
-		function setSelection(e, start, end){
-		    // TODO: implement restore selection on change
-		    //var range = document.createRange();
-		    //range.setStart(e, start);
-		    //range.setEnd(e, end);
-		    ////range.collapse(true);
-		    //var sel = window.getSelection();
-		    //sel.removeAllRanges();
-		    //sel.addRange(range);
-		    //e.focus();
-		    // http://stackoverflow.com/questions/16095155/javascript-contenteditable-set-cursor-caret-to-index
-		    // http://stackoverflow.com/questions/1125292/how-to-move-cursor-to-end-of-contenteditable-entity
-		    // or use rangy
-		}
-		
-		function getSelection(){
-		    var elm = this;
-		    var doc = angular.element(elm).parents('html').parent()[0];
-		    var sel = doc.getSelection();
-		    var selStart = sel.getRangeAt(0).startOffset;
-		    var selEnd = sel.getRangeAt(0).endOffset;
-		    var parent = angular.element(elm);
-		    
-		    scope.$apply(function(){
-			scope.ngSelModel = {
-			    range: sel.getRangeAt(0),
-			    parent: parent,
-			    value: parent.html().substring(selStart, selEnd),
-			    inputValue: parent.html(),
-			    
-			    start: selStart,
-			    startElement: sel.getRangeAt(0).startContainer,
-			    
-			    end: selEnd,
-			    endElement: sel.getRangeAt(0).endContainer,
-			    
-			    select: function(start, end, startElement, endElement){
-				var startElm = startElement || this.startElement;
-				var endElm = endElement || this.endElement;
-				
-				setTimeout(function(){
-				    setSelection(elm, start, end, startElm, endElm);
-				    //getSelection.call(elm);
-				},0);
-			    }
-			}
-		    });
-		}
-		
-		this.setSelection = setSelection;
-		this.getSelection = getSelection;
-	    }
-	    
-	    var selModel = element[0].nodeName === 'TEXTAREA' ? new TextAreaSelection() : new ContentEditSelection();
-	    element.on('mouseup keyup', selModel.getSelection);
-	    scope.$on('$destroy', function(){
-                element.unbind('mouseup keyup', selModel.getSelection);
-                scope.ngSelModel = null;
-            });
-	}
-    };
-}])
-.factory('neRemarked', [function(){
+                throw new Error('neSelectionModel directive can be used only on <textarea> or contentEditable="true" element');
 
+            function TextAreaSelection(){
+
+                function setSelection(e, start, end){
+                    e.focus();
+                    if(e.setSelectionRange)
+                    e.setSelectionRange(start, end);
+                    else if(e.createTextRange) {
+                        e = e.createTextRange();
+                        e.collapse(true);
+                        e.moveEnd('character', end);
+                        e.moveStart('character', start);
+                        e.select();
+                    }
+                }
+
+                function getSelection(){
+                    var textarea = this;
+                    var selStart = textarea.selectionStart;
+                    var selEnd = textarea.selectionEnd;
+
+                    scope.$apply(function(){
+                        scope.neSelectionModel = {
+                            parent: angular.element(textarea),
+                            value: textarea.value.substring(selStart, selEnd),
+                            inputValue: textarea.value,
+                            start: selStart,
+                            end: selEnd,
+                            select: function(start, end){
+                            setTimeout(function(){
+                                setSelection(textarea, start, end);
+                                getSelection.call(textarea);
+                            },0);
+                            }
+                        };
+                    });
+                }
+
+              this.setSelection = setSelection;
+              this.getSelection = getSelection;
+            }
+            
+            function closestElement(el, fn) {
+                while (el) {
+                    if (fn(el)) return el; 
+                    el = el.parentNode;
+                }
+            }
+
+            function ContentEditSelection(element){
+
+                function setSelection(e, start, end){
+                    // TODO: implement restore selection on change
+                    //var range = document.createRange();
+                    //range.setStart(e, start);
+                    //range.setEnd(e, end);
+                    ////range.collapse(true);
+                    //var sel = window.getSelection();
+                    //sel.removeAllRanges();
+                    //sel.addRange(range);
+                    //e.focus();
+                    // http://stackoverflow.com/questions/16095155/javascript-contenteditable-set-cursor-caret-to-index
+                    // http://stackoverflow.com/questions/1125292/how-to-move-cursor-to-end-of-contenteditable-entity
+                    // or use rangy
+                }
+
+                function getSelection(){
+                    var elm = this;
+                    var doc = closestElement(angular.element(elm)[0], function(elm){ return elm.tagName === 'HTML'; }).parentNode;
+                    var sel = doc.getSelection();
+                    var selStart = sel.getRangeAt(0).startOffset;
+                    var selEnd = sel.getRangeAt(0).endOffset;
+                    var parent = angular.element(elm);
+
+                    scope.$apply(function(){
+                        scope.neSelectionModel = {
+                            range: sel.getRangeAt(0),
+                            parent: parent,
+                            value: parent.html().substring(selStart, selEnd),
+                            inputValue: parent.html(),
+
+                            start: selStart,
+                            startElement: sel.getRangeAt(0).startContainer,
+
+                            end: selEnd,
+                            endElement: sel.getRangeAt(0).endContainer,
+
+                            select: function(start, end, startElement, endElement){
+                                var startElm = startElement || this.startElement;
+                                var endElm = endElement || this.endElement;
+
+                                setTimeout(function(){
+                                    setSelection(elm, start, end, startElm, endElm);
+                                    //getSelection.call(elm);
+                                },0);
+                            }
+                        }
+                    });
+                }
+
+                this.setSelection = setSelection;
+                this.getSelection = getSelection;
+            }
+
+            var selModel = element[0].nodeName === 'TEXTAREA' ? new TextAreaSelection() : new ContentEditSelection();
+            element.on('mouseup keyup', selModel.getSelection);
+            scope.$on('$destroy', function(){
+                    element.unbind('mouseup keyup', selModel.getSelection);
+                    scope.neSelectionModel = null;
+                });
+           }
+      };
+}])
+.factory('NeRemarked', [function(){
 
     /**
     * Copyright (c) 2013, Leon Sorokin
@@ -519,7 +527,7 @@ angular.module('neContentEditors',[])
     * reMarked.js - DOM > markdown
     */
 
-    reMarked = function(opts) {
+    var ReMarked = function(opts) {
 
         var links = [];
         var cfg = {
@@ -1170,18 +1178,10 @@ angular.module('neContentEditors',[])
             for (var i in cfg.unsup_tags)
                 cfg.unsup_tags[i] = new RegExp("^(?:" + (i == "inline" ? "a|em|strong|img|code|del|" : "") + cfg.unsup_tags[i].replace(/\s/g, "|") + ")$");
     };
-
-    /*!
-      * klass: a classical JS OOP façade
-      * https://github.com/ded/klass
-      * License MIT (c) Dustin Diaz & Jacob Thornton 2012
-      */
-    !function(a,b){typeof define=="function"?define(b):typeof module!="undefined"?module.exports=b():this[a]=b()}("klass",function(){function f(a){return j.call(g(a)?a:function(){},a,1)}function g(a){return typeof a===c}function h(a,b,c){return function(){var d=this.supr;this.supr=c[e][a];var f=b.apply(this,arguments);return this.supr=d,f}}function i(a,b,c){for(var f in b)b.hasOwnProperty(f)&&(a[f]=g(b[f])&&g(c[e][f])&&d.test(b[f])?h(f,b[f],c):b[f])}function j(a,b){function c(){}function l(){this.init?this.init.apply(this,arguments):(b||h&&d.apply(this,arguments),j.apply(this,arguments))}c[e]=this[e];var d=this,f=new c,h=g(a),j=h?a:this,k=h?{}:a;return l.methods=function(a){return i(f,a,d),l[e]=f,this},l.methods.call(l,k).prototype.constructor=l,l.extend=arguments.callee,l[e].implement=l.statics=function(a,b){return a=typeof a=="string"?function(){var c={};return c[a]=b,c}():a,i(this,a,d),this},l}var a=this,b=a.klass,c="function",d=/xyz/.test(function(){xyz})?/\bsupr\b/:/.*/,e="prototype";return f.noConflict=function(){return a.klass=b,this},a.klass=f,f});
-
     
-    return reMarked;
+    return ReMarked;
 }])
-.factory('neMmarked', [function(){
+.factory('neMarked', [function(){
 
     /**
      * marked - a markdown parser
@@ -2371,6 +2371,15 @@ angular.module('neContentEditors',[])
     
     return marked;
 }]);
+
+/*!
+ * klass: a classical JS OOP façade
+ * https://github.com/ded/klass
+ * License MIT (c) Dustin Diaz & Jacob Thornton 2012
+ */
+!function(a,b){typeof define=="function"?define(b):typeof module!="undefined"?module.exports=b():this[a]=b()}("klass",function(){function f(a){return j.call(g(a)?a:function(){},a,1)}function g(a){return typeof a===c}function h(a,b,c){return function(){var d=this.supr;this.supr=c[e][a];var f=b.apply(this,arguments);return this.supr=d,f}}function i(a,b,c){for(var f in b)b.hasOwnProperty(f)&&(a[f]=g(b[f])&&g(c[e][f])&&d.test(b[f])?h(f,b[f],c):b[f])}function j(a,b){function c(){}function l(){this.init?this.init.apply(this,arguments):(b||h&&d.apply(this,arguments),j.apply(this,arguments))}c[e]=this[e];var d=this,f=new c,h=g(a),j=h?a:this,k=h?{}:a;return l.methods=function(a){return i(f,a,d),l[e]=f,this},l.methods.call(l,k).prototype.constructor=l,l.extend=arguments.callee,l[e].implement=l.statics=function(a,b){return a=typeof a=="string"?function(){var c={};return c[a]=b,c}():a,i(this,a,d),this},l}var a=this,b=a.klass,c="function",d=/xyz/.test(function(){xyz})?/\bsupr\b/:/.*/,e="prototype";return f.noConflict=function(){return a.klass=b,this},a.klass=f,f});
+
+
 /**
  *                                                  NE DIRECTIVES
  * ***************************************************************************************************************************
@@ -2729,7 +2738,7 @@ angular.module('neDirectives',['neObject'])
  */
 
 angular.module('neDragdrop',[])
-.directive('neDraggable', [function() {
+.directive('draggable', [function() {
     return function(scope, element, attrs) {
         // this gives us the native JS object
         var el = element[0];
@@ -2773,7 +2782,7 @@ angular.module('neDragdrop',[])
         }
     };
 }])
-.directive('neDroppable', [function() {
+.directive('droppable', [function() {
     return function(scope, element, attrs) {
         // again we need the native object
         var el = element[0];
@@ -3438,21 +3447,21 @@ angular.module('neLoading', [])
     request: function(config) {
       // Check to make sure this request hasn't already been cached and that
       // the requester didn't explicitly ask us to ignore this request:
-      if (!config.ignoreLoadingBar && !isCached(config)) {
+      if (!config.ignoreLoading && !isCached(config)) {
         loading.reqStarted();
       }
       return config;
     },
     
     response: function(response) {
-      if (!isCached(response.config)) {
+      if(!response.config.ignoreLoading && !isCached(response.config)) {
         loading.reqEnded();
       }
       return response;
     },
     
     responseError: function(rejection) {
-      if (!isCached(rejection.config)) {
+      if (!rejection.config.ignoreLoading && !isCached(rejection.config)) {
         loading.reqEnded();
       }
       return $q.reject(rejection);
@@ -4019,19 +4028,19 @@ angular.module('neNotifications',['neLoading'])
     notifications.error = 
     notifications.danger = notifications.danger = function(title, text, timeout){
         unifyArguments(title, text, timeout, arguments);
-        this.show('error', title, text, 'fa fa-exclamation-circle fa-2x', timeout!==undefined ? timeout : notifications.timeout * 2);
+        return this.show('error', title, text, 'fa fa-exclamation-circle fa-2x', timeout!==undefined ? timeout : notifications.timeout * 2);
     };
     notifications.success = function(title, text, timeout){
         unifyArguments(title, text, timeout, arguments);
-        this.show('success', title, text, 'fa fa-check-circle fa-2x', timeout);
+        return this.show('success', title, text, 'fa fa-check-circle fa-2x', timeout);
     };
     notifications.warning = function(title, text, timeout){
         unifyArguments(title, text, timeout, arguments);
-        this.show('warning', title, text, 'fa fa-warning fa-2x', timeout);
+        return this.show('warning', title, text, 'fa fa-warning fa-2x', timeout);
     };
     notifications.info = function(title, text, timeout){
         unifyArguments(title, text, timeout, arguments);
-        this.show('info', title, text, 'fa fa-info-circle fa-2x', timeout);
+        return this.show('info', title, text, 'fa fa-info-circle fa-2x', timeout);
     };
     
     notifications.getIndex = function(nId){
@@ -4081,7 +4090,7 @@ angular.module('neNotifications',['neLoading'])
                        '                        <i class="{{n.icon}}"></i>'+
                        '                    </td>'+
                        '                    <td style="padding:0px 5px">'+
-                       '                        <div ng-if="!n.include">'+
+                       '                        <div ng-if="!n.include" style="overflow:auto;max-height:200px">'+
                        '                            <strong ng-if="n.title"><span ne-bind-html="{{n.title|translate}}"></span><br></strong>'+
                        '                            <span ne-bind-html="{{n.text|translate}}"></span>'+
                        '                        </div>'+
@@ -5900,7 +5909,7 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
         for(var i=0;i<urlParams.length;i++){
             paramValue = object.deepGet(params, urlParams[i]);
             value = urlParams[i] === '_command' ? cmdName : (paramValue===undefined ? '' : paramValue);
-            if(typeof value === 'string') value = value.replace(/\//g, '%2F').replace(/\?/g, '%3F').replace(/#/g,'%23'); // escape "/","?","#"
+            if(typeof value === 'string') value = encodeURIComponent(value).replace(/\//g, '%2F').replace(/\?/g, '%3F').replace(/#/g,'%23'); // escape "/","?","#"
             url = replaceStringAll(url,'{' +urlParams[i]+ '}', stringifyWithoutQuotes(value));
         }
         
@@ -6081,6 +6090,7 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
         var url = httpOpts.url;
         var headers = httpOpts.headers;
         var data = httpOpts.data;
+        var ignoreLoading = httpOpts.ignoreLoading;
         var fd = new FormData();
         
         for(var key in data) {
@@ -6106,7 +6116,7 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
             };
             
             xhrListeners('removeEventListener');
-            loading.reqEnded();
+            if(!ignoreLoading) loading.reqEnded();
             
             if(status >= 200 && status <= 299) handleSuccess(query, opts, cmdName, successCbs)(response);
             else handleError(query, opts, cmdName, errorCbs)(response);
@@ -6130,7 +6140,7 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
         
         $timeout(function(){
             xhrListeners('addEventListener');
-            loading.reqStarted(); // show loading notification
+            if(!ignoreLoading) loading.reqStarted(); // show loading notification
             xhr.open('POST', url, true);
             xhr.send(fd);
         });
@@ -6212,6 +6222,7 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
             urlEndSlash = cmdOpts.urlEndSlash || opts.urlEndSlash,
             queryStringBuilder = cmdOpts.queryStringBuilder || opts.queryStringBuilder,
             defaultQuery = cmdOpts.defaultQuery || opts.defaultQuery,
+            ignoreLoading = cmdOpts.ignoreLoading!==undefined ? cmdOpts.ignoreLoading : opts.ignoreLoading,
             transformRequest = cmdOpts.transformRequest,
             idKey = cmdOpts.idKey || opts.idKey,
             pageKey = cmdOpts.queryPageKey || opts.queryPageKey,
@@ -6265,7 +6276,8 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
             url: urlPath + queryString,
             method: method,
             data: applyTransformators(data, transformRequest),
-            headers: headers
+            headers: headers,
+            ignoreLoading: ignoreLoading
         };
         
         if(method === 'post-multipart' || method === 'upload') upload.call(resource, cmdName, query, httpOpts, successCbs, errorCbs, progressCbs);
@@ -6375,7 +6387,7 @@ angular.module('neState', ['ngCookies'])
         parser: function (locationString){
             var locationPrefix = this.prefix;
             var encryptLocation = this.encrypt;
-            locationString = decodeURIComponent( locationString || $location.search()[ locationPrefix ] );
+            locationString = locationString || $location.search()[ locationPrefix ]; // decodeURIComponent not necessary, locationString is already decoded
 
             try {
                 if(encryptLocation) locationString = decryptString(locationString);
@@ -7236,7 +7248,7 @@ angular.module('neTree',['neObject'])
             if(!tree.interceptLoad || (tree.interceptLoad && tree.interceptLoad((parent||tree).$query, parent)!==false)){
                 
                 var query = parent ? (parent.$query || {}) : tree.$query || {};
-                query = angular.merge({}, { $page:1, $limit:(tree.$limit || tree.defaultLimit) }, query, tree.getChildrenQuery(parent));
+                query = angular.merge({}, { $page:1, $limit:(tree.$limit || tree.defaultLimit) }, tree.defaultQuery, query, tree.getChildrenQuery(parent));
                 if(query.$sort) query.$sort = angular.merge({}, tree.defaultSort ,query.$sort);
                 
                 if(parent) parent.$query = query;

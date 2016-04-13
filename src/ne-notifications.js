@@ -144,19 +144,19 @@ angular.module('neNotifications',['neLoading'])
     notifications.error = 
     notifications.danger = notifications.danger = function(title, text, timeout){
         unifyArguments(title, text, timeout, arguments);
-        this.show('error', title, text, 'fa fa-exclamation-circle fa-2x', timeout!==undefined ? timeout : notifications.timeout * 2);
+        return this.show('error', title, text, 'fa fa-exclamation-circle fa-2x', timeout!==undefined ? timeout : notifications.timeout * 2);
     };
     notifications.success = function(title, text, timeout){
         unifyArguments(title, text, timeout, arguments);
-        this.show('success', title, text, 'fa fa-check-circle fa-2x', timeout);
+        return this.show('success', title, text, 'fa fa-check-circle fa-2x', timeout);
     };
     notifications.warning = function(title, text, timeout){
         unifyArguments(title, text, timeout, arguments);
-        this.show('warning', title, text, 'fa fa-warning fa-2x', timeout);
+        return this.show('warning', title, text, 'fa fa-warning fa-2x', timeout);
     };
     notifications.info = function(title, text, timeout){
         unifyArguments(title, text, timeout, arguments);
-        this.show('info', title, text, 'fa fa-info-circle fa-2x', timeout);
+        return this.show('info', title, text, 'fa fa-info-circle fa-2x', timeout);
     };
     
     notifications.getIndex = function(nId){
@@ -206,7 +206,7 @@ angular.module('neNotifications',['neLoading'])
                        '                        <i class="{{n.icon}}"></i>'+
                        '                    </td>'+
                        '                    <td style="padding:0px 5px">'+
-                       '                        <div ng-if="!n.include">'+
+                       '                        <div ng-if="!n.include" style="overflow:auto;max-height:200px">'+
                        '                            <strong ng-if="n.title"><span ne-bind-html="{{n.title|translate}}"></span><br></strong>'+
                        '                            <span ne-bind-html="{{n.text|translate}}"></span>'+
                        '                        </div>'+

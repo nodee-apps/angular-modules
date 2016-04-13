@@ -22,7 +22,7 @@ angular.module('neState', ['ngCookies'])
         parser: function (locationString){
             var locationPrefix = this.prefix;
             var encryptLocation = this.encrypt;
-            locationString = decodeURIComponent( locationString || $location.search()[ locationPrefix ] );
+            locationString = locationString || $location.search()[ locationPrefix ]; // decodeURIComponent not necessary, locationString is already decoded
 
             try {
                 if(encryptLocation) locationString = decryptString(locationString);

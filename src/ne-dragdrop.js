@@ -4,7 +4,7 @@
  */
 
 angular.module('neDragdrop',[])
-.directive('neDraggable', [function() {
+.directive('draggable', [function() {
     return function(scope, element, attrs) {
         // this gives us the native JS object
         var el = element[0];
@@ -48,7 +48,7 @@ angular.module('neDragdrop',[])
         }
     };
 }])
-.directive('neDroppable', [function() {
+.directive('droppable', [function() {
     return function(scope, element, attrs) {
         // again we need the native object
         var el = element[0];
