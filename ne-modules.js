@@ -5,42 +5,46 @@
  */
 
 angular.module('neContentEditors',[])
-.service('neMarkdown', ['$document','NeRemarked', 'neMarked', function($document, ReMarked, marked){
+.factory('neMarkdown', ['$document','NeRemarked', 'neMarked', function($document, ReMarked, marked){
+    
+    var md = {}; // markdown instance
+    
     var reMarkedOptions = {
-	link_list:false,	// render links as references, create link list as appendix
-	h1_setext:false,	// underline h1 headers
-	h2_setext:false,     // underline h2 headers
-	h_atx_suf:false,    // header suffixes (###)
-	gfm_code:false,    // gfm code blocks (```)
-	li_bullet:"*",      // list item bullet style
-	hr_char:"-",      // hr style
-	indnt_str:"    ",   // indentation string
-	bold_char:"*",      // char used for strong
-	emph_char:"_",      // char used for em
-	gfm_del:true,     // ~~strikeout~~ for <del>strikeout</del>
-	gfm_tbls:true,     // markdown-extra tables
-	tbl_edges:false,    // show side edges on tables
-	hash_lnks:false,    // anchors w/hash hrefs as links
-	br_only:false    // avoid using "  " as line break indicator
+        link_list:false,	// render links as references, create link list as appendix
+        h1_setext:false,	// underline h1 headers
+        h2_setext:false,     // underline h2 headers
+        h_atx_suf:false,    // header suffixes (###)
+        gfm_code:false,    // gfm code blocks (```)
+        li_bullet:"*",      // list item bullet style
+        hr_char:"-",      // hr style
+        indnt_str:"    ",   // indentation string
+        bold_char:"*",      // char used for strong
+        emph_char:"_",      // char used for em
+        gfm_del:true,     // ~~strikeout~~ for <del>strikeout</del>
+        gfm_tbls:true,     // markdown-extra tables
+        tbl_edges:false,    // show side edges on tables
+        hash_lnks:false,    // anchors w/hash hrefs as links
+        br_only:false    // avoid using "  " as line break indicator
     };
     var reMarker = new ReMarked(reMarkedOptions);
     
-    this.parseHTML = function(htmlString){
-	return reMarker.render(htmlString || '');
+    md.parseHTML = function(htmlString){
+	   return reMarker.render(htmlString || '');
     };
     
     var markedOptions = {
-	gfm: true,
-	tables: true,
-	breaks: false,
-	pedantic: false,
-	sanitize: false,
-	smartLists: true,
-	smartypants: false
+        gfm: true,
+        tables: true,
+        breaks: false,
+        pedantic: false,
+        sanitize: false,
+        smartLists: true,
+        smartypants: false
     };
     marked.setOptions(markedOptions);
     
-    this.renderHTML = function(mdString){
+    
+    md.renderHTML = function(mdString){
         return marked(mdString || '');
     };
     
@@ -82,74 +86,74 @@ angular.module('neContentEditors',[])
     }
     
     
-    this.editor = {
-	// TODO: undo, redo
-	//undo: formatDoc('undo'),
-	//redo: formatDoc('redo'),
-	
-	bold: wrapText('**','**','bold text'),
-	italic: wrapText('*','*','italic text'),
-	strikethrough: wrapText('~~','~~','strikethrough text'),
-	h1: wrapText('\n# ','','headline 1'),
-	h2: wrapText('\n## ','','headline 2'),
-	h3: wrapText('\n### ','','headline 3'),
-	h4: wrapText('\n#### ','','headline 4'),
-	h5: wrapText('\n##### ','','headline 5'),
-	h6: wrapText('\n###### ','','headline 6'),
-	ol: wrapText('\n1. ','','numbered list'),
-	ul: wrapText('\n- ','','bulleted list'),
-	indent: wrapText(' ','','','replace'),
-	dedent: wrapText(' ','','','remove'),
-	blocquote: wrapText('\n> ','','blocquote text'),
-	hr: wrapText('\n\n-----\n\n','','','replace'),
-	
-	link: function(selection, url, name){ // selection, [url || usePrompt]
+    md.editor = {
+        // TODO: undo, redo
+        //undo: formatDoc('undo'),
+        //redo: formatDoc('redo'),
+
+        bold: wrapText('**','**','bold text'),
+        italic: wrapText('*','*','italic text'),
+        strikethrough: wrapText('~~','~~','strikethrough text'),
+        h1: wrapText('\n# ','','headline 1'),
+        h2: wrapText('\n## ','','headline 2'),
+        h3: wrapText('\n### ','','headline 3'),
+        h4: wrapText('\n#### ','','headline 4'),
+        h5: wrapText('\n##### ','','headline 5'),
+        h6: wrapText('\n###### ','','headline 6'),
+        ol: wrapText('\n1. ','','numbered list'),
+        ul: wrapText('\n- ','','bulleted list'),
+        indent: wrapText(' ','','','replace'),
+        dedent: wrapText(' ','','','remove'),
+        blocquote: wrapText('\n> ','','blocquote text'),
+        hr: wrapText('\n\n-----\n\n','','','replace'),
+
+        link: function(selection, url, name){ // selection, [url || usePrompt]
             if(!(url || url==='')){
-		url = prompt('Please enter link url','http://');
+                url = prompt('Please enter link url','http://');
             }
             if(url) return wrapText('', '[ ' +(name || 'link text')+ ' ]( ' +url+ ' )' ,'','replace')(selection);
             else return '';
-	},
-	
-	image: function(selection, url){ // selection, [url || usePrompt]
-            if(!(url || url==='')){
-                url = prompt('Please enter image url','http://');
-            }
-            if(url) return wrapText('', '![]( ' +url+ ' "")' ,'','replace')(selection);
-            else return '';
-	},
-	table: function(selection, cols, rows){
-	    cols = parseInt(cols, 10);
-	    rows = parseInt(rows, 10);
-	    if(cols>0 && rows>0) return wrapText('', tableMD(cols, rows),'','add')(selection);
-	    else return selection.inputValue;
-	}
+        },
+
+        image: function(selection, url){ // selection, [url || usePrompt]
+                if(!(url || url==='')){
+                    url = prompt('Please enter image url','http://');
+                }
+                if(url) return wrapText('', '![]( ' +url+ ' "")' ,'','replace')(selection);
+                else return '';
+        },
+        table: function(selection, cols, rows){
+            cols = parseInt(cols, 10);
+            rows = parseInt(rows, 10);
+            if(cols>0 && rows>0) return wrapText('', tableMD(cols, rows),'','add')(selection);
+            else return selection.inputValue;
+        }
     };
     
     function tableMD(cols, rows){
-	var mdTable = '\n';
-	
-	for(var r=1;r<rows+3;r++){
-	    for(var c=1;c<cols+1;c++){
-		if(c===1) mdTable+='\n';
-		else mdTable+=' | ';
-		
-		if(r===1) mdTable+='col '+c;
-		else if(r===2) mdTable+='-----';
-		else mdTable+='row '+(r-2);
-	    }
-	}
-	
-	//return '\n\ncol 1 | col 2 | col 3' +
-	//'\n----- | ----- | -----' +
-	//'\nrow 1 | row 1 | row 1' +
-	//'\nrow 2 | row 2 | row 2' +
-	//'\nrow 3 | row 3 | row 3\n';
-	
-	return mdTable+'\n';
+        var mdTable = '\n';
+
+        for(var r=1;r<rows+3;r++){
+            for(var c=1;c<cols+1;c++){
+                if(c===1) mdTable+='\n';
+                else mdTable+=' | ';
+
+                if(r===1) mdTable+='col '+c;
+                else if(r===2) mdTable+='-----';
+                else mdTable+='row '+(r-2);
+            }
+        }
+
+        //return '\n\ncol 1 | col 2 | col 3' +
+        //'\n----- | ----- | -----' +
+        //'\nrow 1 | row 1 | row 1' +
+        //'\nrow 2 | row 2 | row 2' +
+        //'\nrow 3 | row 3 | row 3\n';
+
+        return mdTable+'\n';
     }
     
-    return this;
+    return md;
 }])
 .controller('NeMdCtrl', ['$scope', 'neMarkdown', function($scope, markdown){
     $scope.editor = markdown.editor;
