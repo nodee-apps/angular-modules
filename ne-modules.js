@@ -6252,19 +6252,9 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
         
         if(query.$page === 0) throw new Error('NeRestResource: query.$page is equal to zero, must be greater');
         
-        // replace default pagination props by custom if defined
-        if(pageKey !== '$page'){
-            query = object.deepSet(query, pageKey, query.$page);
-            delete query.$page;
-        }
-        if(limitKey !== '$limit'){
-            query = object.deepSet(query, limitKey, query.$limit);
-            delete query.$limit;
-        }
-        if(sortKey !== '$sort'){
-            query = object.deepSet(query, sortKey, query.$sort);
-            delete query.$sort;
-        }
+        // replace default pagination props by custom if defined in query
+        query = replacePaginationProps(query, pageKey, limitKey, sortKey, object);
+        if(data) data = replacePaginationProps(data, pageKey, limitKey, sortKey, object);
         
         var successCbs = [ successCb, cmdOpts.onSuccess, opts.onSuccess ];
         var errorCbs = [ errorCb, cmdOpts.onError, opts.onError ];
@@ -6287,6 +6277,22 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
         if(method === 'post-multipart' || method === 'upload') upload.call(resource, cmdName, query, httpOpts, successCbs, errorCbs, progressCbs);
         else $http(httpOpts).then(handleSuccess(query, opts, cmdName, successCbs), handleError(query, opts, cmdName, errorCbs));
     };
+                                
+    function replacePaginationProps(queryOrData, pageKey, limitKey, sortKey, object) {
+        if(pageKey !== '$page'){
+            queryOrData = object.deepSet(queryOrData, pageKey, queryOrData.$page);
+            delete queryOrData.$page;
+        }
+        if(limitKey !== '$limit'){
+            queryOrData = object.deepSet(queryOrData, limitKey, queryOrData.$limit);
+            delete queryOrData.$limit;
+        }
+        if(sortKey !== '$sort'){
+            queryOrData = object.deepSet(queryOrData, sortKey, queryOrData.$sort);
+            delete queryOrData.$sort;
+        }
+        return queryOrData;
+    }
     
     
     /*
@@ -6354,7 +6360,7 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
     function removePrefixedProps(input, prefix) {
         
         // Ignore things that aren't objects.
-        if(typeof input !== 'object') return input;
+        if(typeof input !== 'object' || !prefix) return input;
         
         for(var key in input) {
             if(input.hasOwnProperty(key)) {

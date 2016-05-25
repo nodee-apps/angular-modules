@@ -51,6 +51,8 @@ angular.module('ui.bootstrap.ext', ['ui.bootstrap'])
         }
     };
 }])
+
+// FIX: keyboard nav when dropdown menu is not in DOM, if(elems[self.selectedOption]) elems[self.selectedOption].focus();
 .controller('UibDropdownController', ['$scope', '$element', '$attrs', '$parse', 'uibDropdownConfig', 'uibDropdownService', '$animate', '$uibPosition', '$document', '$compile', '$templateRequest', function($scope, $element, $attrs, $parse, dropdownConfig, uibDropdownService, $animate, $position, $document, $compile, $templateRequest) {
     var self = this,
         scope = $scope.$new(), // create a child scope so we are not polluting original one
@@ -101,7 +103,12 @@ angular.module('ui.bootstrap.ext', ['ui.bootstrap'])
     };
 
     this.toggle = function(open) {
-        return scope.isOpen = arguments.length ? !!open : !scope.isOpen;
+        scope.isOpen = arguments.length ? !!open : !scope.isOpen;
+        if (angular.isFunction(setIsOpen)) {
+            setIsOpen(scope, scope.isOpen);
+        }
+
+        return scope.isOpen;
     };
 
     // Allow other directives to watch status
@@ -204,12 +211,15 @@ angular.module('ui.bootstrap.ext', ['ui.bootstrap'])
         }
 
         var openContainer = appendTo ? appendTo : $element;
+        var hasOpenClass = openContainer.hasClass(appendTo ? appendToOpenClass : openClass);
 
-        $animate[isOpen ? 'addClass' : 'removeClass'](openContainer, appendTo ? appendToOpenClass : openClass).then(function() {
-            if (angular.isDefined(isOpen) && isOpen !== wasOpen) {
-                toggleInvoker($scope, { open: !!isOpen });
-            }
-        });
+        if (hasOpenClass === !isOpen) {
+            $animate[isOpen ? 'addClass' : 'removeClass'](openContainer, appendTo ? appendToOpenClass : openClass).then(function() {
+                if (angular.isDefined(isOpen) && isOpen !== wasOpen) {
+                    toggleInvoker($scope, { open: !!isOpen });
+                }
+            });
+        }
 
         if (isOpen) {
             if (self.dropdownMenuTemplateUrl) {
@@ -224,7 +234,7 @@ angular.module('ui.bootstrap.ext', ['ui.bootstrap'])
             }
 
             scope.focusToggleElement();
-            uibDropdownService.open(scope);
+            uibDropdownService.open(scope, $element);
         } else {
             if (self.dropdownMenuTemplateUrl) {
                 if (templateScope) {
@@ -235,18 +245,12 @@ angular.module('ui.bootstrap.ext', ['ui.bootstrap'])
                 self.dropdownMenu = newEl;
             }
 
-            uibDropdownService.close(scope);
+            uibDropdownService.close(scope, $element);
             self.selectedOption = null;
         }
 
         if (angular.isFunction(setIsOpen)) {
             setIsOpen($scope, isOpen);
-        }
-    });
-
-    $scope.$on('$locationChangeSuccess', function() {
-        if (scope.getAutoClose() !== 'disabled') {
-            scope.isOpen = false;
         }
     });
 }]);
