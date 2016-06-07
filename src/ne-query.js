@@ -23,7 +23,7 @@ angular.module('neQuery',['neLocal','neObject'])
         $regex_begins:'begins with',
         $regex_ends:'ends with',
         $in:'is in',
-        $ne:'not equal',
+        $ne:'not equal to',
         $regex_ncontains:'not contains',
         $regex_nbegins:'not begins with',
         $regex_nends:'not ends with',
@@ -56,7 +56,10 @@ angular.module('neQuery',['neLocal','neObject'])
         qvalue_true:'True',
         qvalue_false:'False',
         Search:'Search',
-        'Order By':'Order By'
+        'Order By':'Order By',
+        'choose field':'choose field',
+        'type value':'type value',
+        'empty value':'empty value'
     });
 }])
 .run(['$templateCache', function($templateCache){
@@ -66,18 +69,21 @@ angular.module('neQuery',['neLocal','neObject'])
                        '    <small ng-if="!$first && query.logical===\'OR\' && !query.length">{{query.logical | translate}}<br></small>'+
                        '    <div ng-if="!query.length" class="visible-inline-block">'+
                        '        <div class="dropdown visible-inline-block" uib-dropdown keyboard-nav>'+
-                       '            <input type="text" class="input-sm" uib-dropdown-toggle ng-change="query.setFieldByName(query.fieldName);onChange()" ng-model="query.fieldName"/>'+
+                       '            <button ng-if="query.onlyPredefinedFields" class="btn btn-sm btn-default" uib-dropdown-toggle style="width:142px;height:30px">'+
+                       '                <span class="nowrap" ng-if="query.fieldName">{{query.fieldName}}</span><span class="nowrap" ng-if="!query.fieldName">{{::\'choose field\'|translate}}</span>'+
+                       '            </button>'+
+                       '            <input ng-if="!query.onlyPredefinedFields" type="text" placeholder="{{::\'choose field\'|translate}}" class="input-sm" uib-dropdown-toggle ng-change="query.setFieldByName(query.fieldName);onChange()" ng-model="query.fieldName"/>'+
                        '            <ul ng-if="query.fields.filterByName(query.fieldName, query.field.name).length" class="dropdown-menu" style="max-height:220px;overflow:auto">'+
                        '                <li ng-repeat="field in query.fields.filterByName(query.fieldName, query.field.name)" ng-class="{\'active\':(field.name===query.fieldName)}">'+
                        '                    <a href="" ng-click="query.setField(field);onChange()">'+
-                       '			    {{field.name}}'+
-                       '			</a>'+
+                       '			             {{field.name}}'+
+                       '			        </a>'+
                        '                </li>'+
                        '            </ul>'+
                        '        </div>'+
                        '        <div class="dropdown visible-inline-block" uib-dropdown keyboard-nav>'+
-                       '            <button ng-disabled="query.field.disableOperator" class="btn btn-default btn-sm" uib-dropdown-toggle style="width:120px;">'+
-                       '                <span>{{query.operator | translate}}&nbsp;</span>'+
+                       '            <button ng-disabled="query.field.disableOperator" class="btn btn-default btn-sm" uib-dropdown-toggle style="width:120px;height:30px">'+
+                       '                <span class="class="nowrap"">{{query.operator | translate}}&nbsp;</span>'+
                        '            </button>'+
                        '            <ul class="dropdown-menu" style="min-width:210px;overflow:auto">'+
                        '                <li ng-if="!query.field.disableType" class="text-center">'+
@@ -88,7 +94,7 @@ angular.module('neQuery',['neLocal','neObject'])
                        '                    </div>'+
                        '                </li>'+
                        '                <li ng-if="!query.field.disableType" class="divider"></li>'+
-                       '                <li ng-repeat="operator in query.type.operators" ng-class="{\'active\':(query.operator===operator)}">'+
+                       '                <li ng-repeat="operator in query.type.operators" ng-if="!query.field.allowedOperatorIndexes || query.field.allowedOperatorIndexes.indexOf($index)>-1" ng-class="{\'active\':(query.operator===operator)}">'+
                        '                    <a href="" ng-click="query.setOperator(operator);onChange()">'+
                        '			            <span>{{operator | translate}}</span>'+
                        '			        </a>'+
@@ -119,6 +125,7 @@ angular.module('neQuery',['neLocal','neObject'])
     $templateCache.put('neQuery/date.html',
                        '<input type="text" '+
                        '       class="input-sm" '+
+                       '       placeholder="{{(query.field.isEmptyValue(query.value) ? (query.field.placeholder||\'type value\') : \'empty value\')|translate}}"'+
                        '       uib-datepicker-popup '+
                        '       is-open="query.value_opened" '+
                        '       ng-click="query.value_opened=!query.value_opened" '+
@@ -128,6 +135,7 @@ angular.module('neQuery',['neLocal','neObject'])
     $templateCache.put('neQuery/datetime.html',
                        '<input type="text" '+
                        '       class="input-sm" '+
+                       '       placeholder="{{(query.field.isEmptyValue(query.value) ? (query.field.placeholder||\'type value\') : \'empty value\')|translate}}"'+
                        '       uib-datetimepicker-popup '+
                        '       show-seconds="true" '+
                        '       is-open="query.value_opened" '+
@@ -136,7 +144,12 @@ angular.module('neQuery',['neLocal','neObject'])
                        '       ng-change="onChange()"/>');
     
     $templateCache.put('neQuery/number.html',
-                       '<input type="number" class="input-sm" ng-model="query.value" ng-change="onChange()" style="width:142px;"/>');
+                       '<input type="number" '+
+                       '       class="input-sm" '+
+                       '       placeholder="{{(query.field.isEmptyValue(query.value) ? (query.field.placeholder||\'type value\') : \'empty value\')|translate}}"'+
+                       '       ng-model="query.value" '+
+                       '       ng-change="onChange()" '+
+                       '       style="width:142px;"/>');
     
     $templateCache.put('neQuery/list.html',
                        '<select class="input-sm" '+
@@ -155,7 +168,28 @@ angular.module('neQuery',['neLocal','neObject'])
                        '</select>');
     
     $templateCache.put('neQuery/string.html',
-                       '<input type="text" class="input-sm" ng-model="query.value" ng-change="onChange()"/>');
+                       '<input type="text" '+
+                       '       class="input-sm" '+
+                       '       placeholder="{{(query.field.isEmptyValue(query.value) ? (query.field.placeholder||\'type value\') : \'empty value\')|translate}}"'+
+                       '       ng-model="query.value" '+
+                       '       ng-change="onChange()"/>');
+    
+    $templateCache.put('neQuery/string-suggestions.html',
+                       '<div class="dropdown visible-inline-block" uib-dropdown keyboard-nav>'+
+                       '    <input type="text" '+
+                       '           class="input-sm" '+
+                       '           placeholder="{{(query.field.isEmptyValue(query.value) ? (query.field.placeholder||\'type value\') : \'empty value\')|translate}}"'+
+                       '           uib-dropdown-toggle '+
+                       '           ng-model="query.suggestion" '+
+                       '           ng-change="query.field.onlySuggestedValues ? query.value=null : query.value=query.suggestion;query.field.createSuggestions(query, query.suggestion);onChange()">'+
+                       '    <ul ng-if="query.suggestions.length" class="dropdown-menu" style="max-height:220px;overflow:auto">'+
+                       '        <li ng-repeat="value in query.suggestions" ng-class="{\'active\':(value===query.value)}">'+
+                       '          <a href="" ng-click="query.value=value;query.suggestion=value;onChange()">'+
+                       '		      {{value}}'+
+                       '		  </a>'+
+                       '        </li>'+
+                       '    </ul>'+
+                       '</div>');
     
     $templateCache.put('neQuery/disabled.html',
                        '<input type="text" disabled="disabled" class="input-sm" ng-model="query.value"/>');
@@ -166,10 +200,13 @@ angular.module('neQuery',['neLocal','neObject'])
                        '    <small>{{::\'Order By\'|translate}}</small>'+
                        '    <div class="visible-inline-block">'+
                        '        <div class="dropdown visible-inline-block" uib-dropdown keyboard-nav>'+
-                       '            <input type="text" class="input-sm dropdown-toggle" uib-dropdown-toggle ng-change="query.setSortByName(sort.fieldName, $index);onChange()" ng-model="sort.fieldName" />'+
+                       '            <button ng-if="query.onlyPredefinedFields" class="btn btn-sm btn-default" uib-dropdown-toggle style="width:142px;height:30px">'+
+                       '                <span class="nowrap" ng-if="sort.fieldName">{{sort.fieldName}}</span><span class="nowrap" ng-if="!sort.fieldName">{{::\'choose field\'|translate}}</span>'+
+                       '            </button>'+
+                       '            <input ng-if="!query.onlyPredefinedFields" type="text" placeholder="{{::\'choose field\'|translate}}" class="input-sm" uib-dropdown-toggle ng-change="query.setSortByName(sort.fieldName, $index);onChange()" ng-model="sort.fieldName" />'+
                        '            <ul ng-if="query.fields.filterByName(sort.fieldName, sort.name).length" class="dropdown-menu" style="max-height:220px;overflow:auto">'+
                        '                <li ng-repeat="field in query.fields.filterByName(sort.fieldName, sort.name)" ng-class="{\'active\':(field.name===sort.fieldName)}">'+
-                       '                    <a href="" ng-click="query.setSortField(field,$parent.$index)">'+
+                       '                    <a href="" ng-click="query.setSortField(field,$parent.$index);onChange()">'+
                        '        			    {{field.name}}'+
                        '        			</a>'+
                        '                </li>'+
@@ -209,9 +246,15 @@ angular.module('neQuery',['neLocal','neObject'])
                   '    <i class="fa fa-fw fa-search"></i>'+
                   '    <span class="hidden-sm">{{::\'Search\' | translate}}</span>'+
                   '</button>',
-        scope:{ query:'=neQuerySearch', searchClick:'&neQuerySearchClick', onChange:'&neQuerySearchChange' },
+        scope:{ query:'=neQuerySearch', searchClick:'&neQuerySearchClick', onQuerySearchChange:'&neQuerySearchChange', querySearchEmpty:'=neQuerySearchEmpty' },
         link: function(scope, elm, attrs, ctrl){
-            
+            var watchEmptyState = !!attrs.neQuerySearchEmpty;
+            scope.onChange = function(){
+                scope.query.setDirty();
+                if(watchEmptyState) scope.querySearchEmpty = scope.query.isEmpty();
+                if(scope.onQuerySearchChange) scope.onQuerySearchChange();
+            };
+            if(watchEmptyState) scope.querySearchEmpty = scope.query.isEmpty();
         }
     };
 }])
@@ -219,9 +262,15 @@ angular.module('neQuery',['neLocal','neObject'])
     return {
         restrict:'A',
         templateUrl: 'neQuery/query.html',
-        scope:{ query:'=neQuery', onChange:'&neQueryChange' },
+        scope:{ query:'=neQuery', onQueryChange:'&neQueryChange', queryEmpty:'=neQueryEmpty' },
         link: function(scope, elm, attrs, ctrl){
-
+            var watchEmptyState = !!attrs.neQueryEmpty;
+            scope.onChange = function(){
+                scope.query.setDirty();
+                if(watchEmptyState) scope.queryEmpty = scope.query.isQueryEmpty();
+                if(scope.onQueryChange) scope.onQueryChange();
+            };
+            if(watchEmptyState) scope.queryEmpty = scope.query.isQueryEmpty();
         }
     };
 }])
@@ -229,9 +278,15 @@ angular.module('neQuery',['neLocal','neObject'])
     return {
         restrict:'A',
         templateUrl: 'neQuery/sort.html',
-        scope:{ query:'=neQuerySort', onChange:'&neQuerySortChange' },
+        scope:{ query:'=neQuerySort', onQuerySortChange:'&neQuerySortChange', querySortEmpty:'=neQuerySortEmpty' },
         link: function(scope, elm, attrs, ctrl){
-
+            var watchEmptyState = !!attrs.neQuerySortEmpty;
+            scope.onChange = function(){
+                scope.query.setDirty();
+                if(watchEmptyState) scope.querySortEmpty = scope.query.isSortEmpty();
+                if(scope.onQuerySortChange) scope.onQuerySortChange();
+            };
+            if(watchEmptyState) scope.querySortEmpty = scope.query.isSortEmpty();
         }
     };
 }])
@@ -246,7 +301,8 @@ angular.module('neQuery',['neLocal','neObject'])
         boolean: 'neQuery/boolean.html',
         date: 'neQuery/date.html',
         datetime: 'neQuery/datetime.html',
-        list: 'neQuery/list.html'
+        list: 'neQuery/list.html',
+        suggestions: 'neQuery/string-suggestions.html'
     };
     
     // used when parsing query
@@ -398,13 +454,15 @@ angular.module('neQuery',['neLocal','neObject'])
         else if(query.operator && query.field && query.field.key) {
             value = angular.copy(query.value);
             if(query.type.onBuild) value = query.type.onBuild(value);
-            value = queries[ query.operator ].build(typeof query.field.onBuild==='function' ? query.field.onBuild(value) : value);
-            if(value!==undefined && value!==null) {
-                if(query.field.build) {
-                    var customBuild = query.field.build(query.field.key, value, query); // custom field build
-                    result[ customBuild.key || query.field.key] = customBuild.key ? customBuild.value : customBuild;
+            if(!query.field.isEmptyValue(value)){
+                value = queries[ query.operator ].build(typeof query.field.onBuild==='function' ? query.field.onBuild(value) : value);
+                if(value!==undefined && value!==null) {
+                    if(query.field.build) {
+                        var customBuild = query.field.build(query.field.key, value, query); // custom field build
+                        result[ customBuild.key || query.field.key] = customBuild.key ? customBuild.value : customBuild;
+                    }
+                    else result[query.field.key] = value;
                 }
-                else result[query.field.key] = value;
             }
         }
         
@@ -549,20 +607,22 @@ angular.module('neQuery',['neLocal','neObject'])
     var queries = {
         AND:{ // called on build when AND operator
             build: function(value){
-                var $and = [];
+                var $and = [], andVal;
                 for(var i=0;i<(value.length||0);i++){
-                    $and.push(build(value[i], true));
+                    andVal = build(value[i], true);
+                    if(Object.keys(andVal).length) $and.push(andVal);
                 }
-                return { $and: $and };
+                return $and.length ? { $and: $and } : {};
             }
         },
         OR:{ // called on build when OR operator
             build: function(value){
-                var $or = [];
+                var $or = [], orVal;
                 for(var i=0;i<(value.length||0);i++){
-                    $or.push(build(value[i], true));
+                    orVal = build(value[i], true);
+                    if(Object.keys(orVal).length) $or.push(orVal);
                 }
-                return { $or: $or };
+                return $or.length ? { $or: $or } : {};
             }
         },
         VALUE:{ // if parsed query value is not recognized object, this will be called
@@ -870,11 +930,17 @@ angular.module('neQuery',['neLocal','neObject'])
             if((!this.parent || !this.parent()) && this.length===0) this.append('AND'); // if this is root query and there is no child, add one
             return q;
         };
+        q.isEmpty = isEmpty; // is both, sort and query empty
+        q.isQueryEmpty = isQueryEmpty;
+        q.isSortEmpty = isSortEmpty;
+        q.isDirty = isDirty;
+        q.setDirty = setDirty;
         q.clear = clear;
         q.newQuery = newQuery;
         q.templates = templates;
         q.fields = this.fields; // inherit fields
         q.types = this.types; // inherit types
+        q.onlyPredefinedFields = this.onlyPredefinedFields; // inherit onlyPredefinedFields
         q.logical = logical || 'AND'; // default logical is AND
         q.append = append;
         q.next = next;
@@ -972,7 +1038,34 @@ angular.module('neQuery',['neLocal','neObject'])
     
     function clear(){
         this.splice(0, this.length); // clear array
+        this.setDirty(false);
         return this;
+    }
+    
+    function isEmpty(builtQuery){
+        builtQuery = builtQuery || this.build();
+        return this.isQueryEmpty(builtQuery) && this.isSortEmpty(builtQuery);
+    }
+    
+    function isQueryEmpty(builtQuery){
+        builtQuery = builtQuery || this.build();
+        var keysLength = Object.keys(builtQuery).length;
+        return keysLength === 0 || (keysLength === 1 && builtQuery.hasOwnProperty('$sort'));
+    }
+    
+    function isSortEmpty(builtQuery){
+        builtQuery = builtQuery || this.build();
+        return Object.keys(builtQuery.$sort||{}).length === 0;
+    }
+    
+    function setDirty(isDirty){
+        this.$dirty = isDirty = false ? false : true;
+        this.$touched = isDirty = false ? false : true;
+        return this;
+    }
+    
+    function isDirty(){
+        return this.$dirty;
     }
     
     function setFieldByName(fieldName, resetIfDefined){
@@ -1005,6 +1098,7 @@ angular.module('neQuery',['neLocal','neObject'])
         
         // set default operator, if field has operatorIndex
         this.operator = this.type.operators[ this.field.operatorIndex||0 ];
+        if(field.onSet) field.onSet(this);
     }
         
     function setOperator(operator){
@@ -1144,10 +1238,18 @@ angular.module('neQuery',['neLocal','neObject'])
         }
     };
     
-    function Query(name, fields){
-        if(arguments.length===1 && typeof arguments[0]!=='string'){
-            fields = arguments[0];
-            name = null;
+    function Query(name, fields){ // Query(opts)
+        var opts = {};
+        if(arguments.length===1){
+            if(Array.isArray(arguments[0])){
+                fields = arguments[0];
+                name = null;    
+            }
+            else if(angular.isObject(arguments[0])) {
+                opts = arguments[0];
+                fields = opts.fields;
+                name = opts.name;
+            }
         }
 
         fields = fields || [];
@@ -1177,23 +1279,53 @@ angular.module('neQuery',['neLocal','neObject'])
             if(fields[i].type) fields[i].disableType = true;
             fields[i].type = fields[i].type || fields[i].defaultType || defaultType; // set default type if field has no type
 
+            // config can disable some operators
+            fields[i].allowedOperatorIndexes = fields[i].allowedOperatorIndexes;
+            
             // if operator is set, disable changing operator
             if(fields[i].operatorIndex >= 0) fields[i].disableOperator = true;
             fields[i].operatorIndex = fields[i].operatorIndex || fields[i].defaultOperatorIndex;
 
             // set list template if values are set, but template not
             if(fields[i].values && !fields[i].template) fields[i].template = templates.list;
+            
+            // config can define emptyValues - values which can be valid but considered as empty, e.g. empty string, zero, etc...
+            fields[i].emptyValues = fields[i].emptyValues || fields[i].ignoreValues;
+            fields[i].isEmptyValue = fields[i].isEmptyValue || function(value){
+                if(value===null || value===undefined) return true;
+                return (this.emptyValues||this.type.emptyValues) ? (this.emptyValues||this.type.emptyValues).indexOf(value) > -1 : false;
+            };
+            
+            // wrap load suggestions method
+            fields[i].loadSuggestions = fields[i].loadSuggestions || fields[i].getSuggestions || fields[i].suggestions;
+            fields[i].onlySuggestedValues = fields[i].onlySuggestedValues;
+            
+            if(fields[i].loadSuggestions) {
+                fields[i].onSet = fields[i].onSet || function(query){
+                    query.value = null;
+                    query.suggestion = '';
+                    query.suggestions = [];
+                };
+                fields[i].template = fields[i].template || templates.suggestions;
+                fields[i].createSuggestions = (function(field){
+                    var minLength = field.suggestionMinLength || field.suggestionMinSearchLength || 3;
+                    return object.debounce(function(query, searchText){
+                        searchText = searchText || '';
+                        if(searchText.length >= minLength) field.loadSuggestions(searchText, function(values){
+                            query.suggestions = values;
+                        });
+                    }, field.suggestionDebounce >= 0 ? field.suggestionDebounce : 350);
+                })(fields[i]);
+            }
         }
         fields.filterByName = filterByName;
 
         var q = newQuery.call({ fields:fields, types:Object.keys(types) },'AND'); // default logical is AND
-        q.append('AND');
-
         q.name = name;
+        q.onlyPredefinedFields = opts.onlyPredefinedFields;
 
-        // q.strictFields = false;
-        // q.onParse
-
+        q.append('AND');
+        
         return q;
     }
     
