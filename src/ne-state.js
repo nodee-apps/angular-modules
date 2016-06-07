@@ -26,7 +26,7 @@ angular.module('neState', ['ngCookies'])
 
             try {
                 if(encryptLocation) locationString = decryptString(locationString);
-                return angular.fromJson(locationString || '{}') || {};
+                return object.fromJson(locationString || '{}') || {};
             }
             catch(err){}
             return {};

@@ -112,6 +112,12 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
     // add default XHR header
     $httpProvider.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 }])
+.factory('NeResourceTransformators.dateStringsToDates', ['neObject', function(object){    
+    return object.dateStringsToDates;
+}])
+.factory('NeResourceTransformators.removePrefixedProps', ['neObject', function(object){
+    return object.removePrefixedProps;
+}])
 .factory('NeRestResource', ['$http',
                             '$timeout',
                             'neObject',
@@ -663,64 +669,4 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
     
     return Resource;
     
-}])
-.factory('NeResourceTransformators.dateStringsToDates', [function(){
-    
-    // auto parse dates
-    var regexIso8601 = /^(\d{4}|\+\d{6})(?:-(\d{2})(?:-(\d{2})(?:T(\d{2}):(\d{2}):(\d{2})\.(\d{1,})(Z|([\-+])(\d{2}):(\d{2}))?)?)?)?$/;
-    var regexIsoJson = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2}(?:\.\d*))(?:Z|(\+|-)([\d|:]*))?$/;
-    
-    function dateStringsToDates(input, useIsoJson) {
-        var value, match, milliseconds;
-        
-        // try to parse if input is string
-        if(typeof input === 'string' && (match = input.match(useIsoJson ? regexIsoJson : regexIso8601))) {
-            milliseconds = Date.parse(match[0]);
-            if (!isNaN(milliseconds)) {
-                input = new Date(milliseconds);
-            }
-            return input;
-        }
-        
-        // Ignore things that aren't objects
-        else if(typeof input !== 'object') return input;
-        
-        for(var key in input){
-            value = input[key];
-            
-            // Check for string properties which look like dates.
-            if(typeof value === 'string' && (match = value.match(useIsoJson ? regexIsoJson : regexIso8601))) {
-                milliseconds = Date.parse(match[0]);
-                if (!isNaN(milliseconds)) {
-                    input[key] = new Date(milliseconds);
-                }
-            }
-            else if (typeof value === 'object') {
-                // Recurse into object
-                dateStringsToDates(value, useIsoJson);
-            }
-        }        
-        return input;
-    }
-    
-    return dateStringsToDates;
-}])
-.factory('NeResourceTransformators.removePrefixedProps', [function(){
-    
-    function removePrefixedProps(input, prefix) {
-        
-        // Ignore things that aren't objects.
-        if(typeof input !== 'object' || !prefix) return input;
-        
-        for(var key in input) {
-            if(input.hasOwnProperty(key)) {
-                var value = input[key];
-                
-                if(key.indexOf(prefix)===0) delete input[key];
-                else if(typeof value === 'object') removePrefixedProps(value, prefix);
-            }
-        }
-    }
-    
-    return removePrefixedProps;
 }]);
