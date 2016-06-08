@@ -4526,7 +4526,7 @@ angular.module('neObject',[])
 angular.module('neQuery',['neLocal','neObject'])
 .config(['neLocalProvider', function(localProvider){
     localProvider.set('default', {
-        $equal:'=',
+        $eq:'=',
         $lt:'<',
         $lte:'<=',
         $gt:'>',
@@ -4638,7 +4638,7 @@ angular.module('neQuery',['neLocal','neObject'])
     $templateCache.put('neQuery/date.html',
                        '<input type="text" '+
                        '       class="input-sm" '+
-                       '       placeholder="{{(query.field.isEmptyValue(query.value) ? (query.field.placeholder||\'type value\') : \'empty value\')|translate}}"'+
+                       '       placeholder="{{(query.field.isEmptyValue(query.value) ? (query.field.placeholder||\'type value\') : \'empty value\')|translate}}" '+
                        '       uib-datepicker-popup '+
                        '       is-open="query.value_opened" '+
                        '       ng-click="query.value_opened=!query.value_opened" '+
@@ -4659,7 +4659,7 @@ angular.module('neQuery',['neLocal','neObject'])
     $templateCache.put('neQuery/number.html',
                        '<input type="number" '+
                        '       class="input-sm" '+
-                       '       placeholder="{{(query.field.isEmptyValue(query.value) ? (query.field.placeholder||\'type value\') : \'empty value\')|translate}}"'+
+                       '       placeholder="{{(query.field.isEmptyValue(query.value) ? (query.field.placeholder||\'type value\') : \'empty value\')|translate}}" '+
                        '       ng-model="query.value" '+
                        '       ng-change="onChange()" '+
                        '       style="width:142px;"/>');
@@ -4683,7 +4683,7 @@ angular.module('neQuery',['neLocal','neObject'])
     $templateCache.put('neQuery/string.html',
                        '<input type="text" '+
                        '       class="input-sm" '+
-                       '       placeholder="{{(query.field.isEmptyValue(query.value) ? (query.field.placeholder||\'type value\') : \'empty value\')|translate}}"'+
+                       '       placeholder="{{(query.field.isEmptyValue(query.value) ? (query.field.placeholder||\'type value\') : \'empty value\')|translate}}" '+
                        '       ng-model="query.value" '+
                        '       ng-change="onChange()"/>');
     
@@ -4691,7 +4691,7 @@ angular.module('neQuery',['neLocal','neObject'])
                        '<div class="dropdown visible-inline-block" uib-dropdown keyboard-nav>'+
                        '    <input type="text" '+
                        '           class="input-sm" '+
-                       '           placeholder="{{(query.field.isEmptyValue(query.value) ? (query.field.placeholder||\'type value\') : \'empty value\')|translate}}"'+
+                       '           placeholder="{{(query.field.isEmptyValue(query.value) ? (query.field.placeholder||\'type value\') : \'empty value\')|translate}}" '+
                        '           uib-dropdown-toggle '+
                        '           ng-model="query.suggestion" '+
                        '           ng-change="query.field.onlySuggestedValues ? query.value=null : query.value=query.suggestion;query.field.createSuggestions(query, query.suggestion);onChange()">'+
@@ -4842,23 +4842,23 @@ angular.module('neQuery',['neLocal','neObject'])
         },
         number:{
             name:'number',
-            operators:['$equal','$lt','$lte','$gt','$gte'], // '=','<','<=','>','>='
+            operators:['$eq','$lt','$lte','$gt','$gte'], // '=','<','<=','>','>='
             template: templates.number
         },
         boolean:{
             name:'boolean',
-            operators:['$equal'], // 'is'
+            operators:['$eq'], // 'is'
             template: templates.boolean,
             onBuild: function(value){ if([true,'true','True',1,'yes','Yes'].indexOf(value)!==-1) return true; else return false; }
         },
         date:{
             name:'date',
-            operators:['$equal','$lt','$lte','$gt','$gte'], // '=','<','<=','>','>='
+            operators:['$eq','$lt','$lte','$gt','$gte'], // '=','<','<=','>','>='
             template: templates.date
         },
         datetime:{
             name:'datetime',
-            operators:['$equal','$lt','$lte','$gt','$gte'], // '=','<','<=','>','>='
+            operators:['$eq','$lt','$lte','$gt','$gte'], // '=','<','<=','>','>='
             template: templates.datetime
         },
         object:{
@@ -5077,10 +5077,10 @@ angular.module('neQuery',['neLocal','neObject'])
         
         function addQuery(query, result, logical){
             child = query.append(logical);
-            child.setFieldByName(result.fieldName, true); // reset if defined, because default field (first) was already set
             child.type = types[result.typeName];
-            child.operator = result.operator;
             child.value = result.value;
+            child.setFieldByName(result.fieldName, true); // reset if defined, because default field (first) was already set
+            child.operator = result.operator; // force change operator to show original query operator, even if field has disabled changing operator
         }
         
         return query;
@@ -5155,7 +5155,7 @@ angular.module('neQuery',['neLocal','neObject'])
                 if(type) return {
                     fieldName: key,
                     typeName: type,
-                    operator: type==='string' ? '$regex_exact' : '$equal',
+                    operator: type==='string' ? '$regex_exact' : '$eq',
                     value: value
                 };
             }
@@ -5182,9 +5182,20 @@ angular.module('neQuery',['neLocal','neObject'])
                 };
             }
         },
-        $equal:{ // virtual, called on build when equal operator
+        $eq:{
             build: function(value){
                 return value;
+            },
+            parse: function(key, value){
+                var vt = parseValueType(value), type = vt.type;
+                value = vt.value;
+                
+                if(type) return {
+                    fieldName: key,
+                    typeName: type,
+                    operator: type==='string' ? '$regex_exact' : '$eq',
+                    value: value
+                };
             }
         },
         $exists:{
@@ -5581,7 +5592,9 @@ angular.module('neQuery',['neLocal','neObject'])
         return this.$dirty;
     }
     
-    function setFieldByName(fieldName, resetIfDefined){
+    function setFieldByName(fieldName, resetPrevField){
+        if(resetPrevField) delete this.field;
+        
         if(fieldName){
             var fieldNameLower = fieldName.toLowerCase();
             for(var i=0;i<this.fields.length;i++){
@@ -5589,7 +5602,7 @@ angular.module('neQuery',['neLocal','neObject'])
                     return this.setField(this.fields[i]); // match with predefined fields
                 }
                 else if(this.fields[i].match && (fieldName.match(this.fields[i].match) || fieldNameLower.match(this.fields[i].match))){
-                    if(!resetIfDefined && this.field && this.field.field === this.fields[i].field) return;
+                    if(this.field && this.field.field === this.fields[i].field) return;
                     else return this.setField(this.fields[i], fieldName); // match with predefined fields
                 }
             }
@@ -5606,12 +5619,13 @@ angular.module('neQuery',['neLocal','neObject'])
             // this.operator = this.type.operators[0];
             this.value = null;
         }
+        var prevField = this.field;
         this.field = angular.copy(field||{});
         this.fieldName = fieldName || this.field.name;
         
         // set default operator, if field has operatorIndex
         this.operator = this.type.operators[ this.field.operatorIndex||0 ];
-        if(field.onSet) field.onSet(this);
+        if(field.onSet) field.onSet(this, prevField);
     }
         
     function setOperator(operator){
@@ -5814,10 +5828,14 @@ angular.module('neQuery',['neLocal','neObject'])
             fields[i].onlySuggestedValues = fields[i].onlySuggestedValues;
             
             if(fields[i].loadSuggestions) {
-                fields[i].onSet = fields[i].onSet || function(query){
-                    query.value = null;
-                    query.suggestion = '';
-                    query.suggestions = [];
+                fields[i].resetOnFieldChange = true;
+                fields[i].onSet = fields[i].onSet || function(query, prevField){
+                    if(prevField){
+                        query.value = null;
+                        query.suggestion = '';
+                        query.suggestions = [];
+                    }
+                    else query.suggestion = query.suggestion || query.value;
                 };
                 fields[i].template = fields[i].template || templates.suggestions;
                 fields[i].createSuggestions = (function(field){
