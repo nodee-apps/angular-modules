@@ -164,216 +164,217 @@ angular.module('neContentEditors',[])
 .factory('neWysiwyg', ['$document', 'neModals', function($document, modals){
 
     function insertNodeAtSelection(selection, insertNode){
-	// get current selection
-	var sel = window.getSelection();
-	
-	// get the first range of the selection
-	// (there's almost always only one range)
-	var range = selection.range;
-	
-	// deselect everything
-	sel.removeAllRanges();
-	
-	// remove content of current selection from document
-	range.deleteContents();
-	
-	// get location of current selection
-	var container = range.startContainer;
-	var pos = range.startOffset;
-	
-	// make a new range for the new selection
-	range=document.createRange();
-	
-	if (container.nodeType===3 && insertNode.nodeType===3) {
-	    
-	    // if we insert text in a textnode, do optimized insertion
-	    container.insertData(pos, insertNode.nodeValue);
-	    
-	    // put cursor after inserted text
-	    range.setEnd(container, pos+insertNode.length);
-	    range.setStart(container, pos+insertNode.length);
-	}
-	else {
-	    var afterNode;
-	    if (container.nodeType===3) {
-	      
-		// when inserting into a textnode
-		// we create 2 new textnodes
-		// and put the insertNode in between
-		
-		var textNode = container;
-		container = textNode.parentNode;
-		var text = textNode.nodeValue;
-		
-		// text before the split
-		var textBefore = text.substr(0,pos);
-		// text after the split
-		var textAfter = text.substr(pos);
-		
-		var beforeNode = document.createTextNode(textBefore);
-		afterNode = document.createTextNode(textAfter);
-		
-		// insert the 3 new nodes before the old one
-		container.insertBefore(afterNode, textNode);
-		container.insertBefore(insertNode, afterNode);
-		container.insertBefore(beforeNode, insertNode);
-		
-		// remove the old node
-		container.removeChild(textNode);    
-	    }
-	    else {
-		// else simply insert the node
-		afterNode = container.childNodes[pos];
-		container.insertBefore(insertNode, afterNode);
-	    }
-	    
-	    range.setEnd(afterNode, 0);
-	    range.setStart(afterNode, 0);
-	}
-	
-	sel.addRange(range);
+        // get current selection
+        var sel = window.getSelection();
+
+        // get the first range of the selection
+        // (there's almost always only one range)
+        var range = selection.range;
+
+        // deselect everything
+        sel.removeAllRanges();
+
+        // remove content of current selection from document
+        range.deleteContents();
+
+        // get location of current selection
+        var container = range.startContainer;
+        var pos = range.startOffset;
+
+        // make a new range for the new selection
+        range=document.createRange();
+
+        if (container.nodeType===3 && insertNode.nodeType===3) {
+
+            // if we insert text in a textnode, do optimized insertion
+            container.insertData(pos, insertNode.nodeValue);
+
+            // put cursor after inserted text
+            range.setEnd(container, pos+insertNode.length);
+            range.setStart(container, pos+insertNode.length);
+        }
+        else {
+            var afterNode;
+            if (container.nodeType===3) {
+
+                // when inserting into a textnode
+                // we create 2 new textnodes
+                // and put the insertNode in between
+
+                var textNode = container;
+                container = textNode.parentNode;
+                var text = textNode.nodeValue;
+
+                // text before the split
+                var textBefore = text.substr(0,pos);
+                // text after the split
+                var textAfter = text.substr(pos);
+
+                var beforeNode = document.createTextNode(textBefore);
+                afterNode = document.createTextNode(textAfter);
+
+                // insert the 3 new nodes before the old one
+                container.insertBefore(afterNode, textNode);
+                container.insertBefore(insertNode, afterNode);
+                container.insertBefore(beforeNode, insertNode);
+
+                // remove the old node
+                container.removeChild(textNode);    
+            }
+            else {
+                // else simply insert the node
+                afterNode = container.childNodes[pos];
+                container.insertBefore(insertNode, afterNode);
+            }
+
+            range.setEnd(afterNode, 0);
+            range.setStart(afterNode, 0);
+        }
+
+        sel.addRange(range);
     }
     
     
     function formatDoc(sCmd, sValue){
-	return function(selection){
-	    $document[0].execCommand(sCmd, false, sValue);
-	    //selection.select(selection.start, selection.end);
-	    return selection.parent.html();
-	};
+        return function(selection){
+            $document[0].execCommand(sCmd, false, sValue);
+            //selection.select(selection.start, selection.end);
+            return selection.parent.html();
+        };
     }
     
     var colors = ['#ffffff','#ffccc9','#ffce93','#fffc9e','#ffffc7','#9aff99','#96fffb','#cdffff','#cbcefb','#cfcfcf','#fd6864','#fe996b','#fffe65','#fcff2f','#67fd9a','#38fff8','#68fdff','#9698ed','#c0c0c0','#fe0000','#f8a102','#ffcc67','#f8ff00','#34ff34','#68cbd0','#34cdf9','#6665cd','#9b9b9b','#cb0000','#f56b00','#ffcb2f','#ffc702','#32cb00','#00d2cb','#3166ff','#6434fc','#656565','#9a0000','#ce6301','#cd9934','#999903','#009901','#329a9d','#3531ff','#6200c9','#343434','#680100','#963400','#986536','#646809','#036400','#34696d','#00009b','#303498','#000000','#330001','#643403','#663234','#343300','#013300','#003532','#010066','#340096'];
     var fontSizes = [
-	{name: 'Extra Small', css: 'xx-small', value: '1'},
-	{name: 'Small', css: 'x-small', value: '2'},
-	{name: 'Medium', css: 'small', value: '3'},
-	{name: 'Large', css: 'medium', value: '4'},
-	{name: 'Extra Large', css: 'large', value: '5'},
-	{name: 'Huge', css: 'x-large', value: '6'}
+        {name: 'Extra Small', css: 'xx-small', value: '1'},
+        {name: 'Small', css: 'x-small', value: '2'},
+        {name: 'Medium', css: 'small', value: '3'},
+        {name: 'Large', css: 'medium', value: '4'},
+        {name: 'Extra Large', css: 'large', value: '5'},
+        {name: 'Huge', css: 'x-large', value: '6'}
     ];
     
     var editor = {
-	undo: formatDoc('undo'),
-	redo: formatDoc('redo'),
+        undo: formatDoc('undo'),
+        redo: formatDoc('redo'),
+
+        bold: formatDoc('bold'),
+        italic: formatDoc('italic'),
+        strikethrough: formatDoc('strikeThrough'),
+        underline: formatDoc('underline'),
+        quote: formatDoc('quote'),
+
+        h1: formatDoc('formatblock','<h1>'),
+        h2: formatDoc('formatblock','<h2>'),
+        h3: formatDoc('formatblock','<h3>'),
+        h4: formatDoc('formatblock','<h4>'),
+        h5: formatDoc('formatblock','<h5>'),
+        h6: formatDoc('formatblock','<h6>'),
+
+        fontSizes: fontSizes,
+        fontSize: function(selection, size){
+            return formatDoc('fontsize', size)(selection);
+        },
 	
-	bold: formatDoc('bold'),
-	italic: formatDoc('italic'),
-	strikethrough: formatDoc('strikeThrough'),
-	underline: formatDoc('underline'),
-	quote: formatDoc('quote'),
-	
-	h1: formatDoc('formatblock','<h1>'),
-	h2: formatDoc('formatblock','<h2>'),
-	h3: formatDoc('formatblock','<h3>'),
-	h4: formatDoc('formatblock','<h4>'),
-	h5: formatDoc('formatblock','<h5>'),
-	h6: formatDoc('formatblock','<h6>'),
-	
-	fontSizes: fontSizes,
-	fontSize: function(selection, size){
-	    return formatDoc('fontsize', size)(selection);
-	},
-	
-	colors: colors,
-	color: function(selection, color){
-	    return formatDoc('forecolor', color)(selection);
-	},
-	bgColor: function(selection, color){
-	    return formatDoc('hilitecolor', color)(selection);
-	},
-	
-	justifyLeft: formatDoc('justifyleft'),
-	justifyCenter: formatDoc('justifycenter'),
-	justifyRight: formatDoc('justifyright'),
-	justifyFull: formatDoc('justifyfull'),
-	
-	ol: formatDoc('insertorderedlist'),
-	ul: formatDoc('insertunorderedlist'),
-	indent: formatDoc('indent'),
-	outdent: formatDoc('outdent'),
-	
-	unlink: formatDoc('unlink'),
-	link: function(selection, url, name){ // selection, [url || usePrompt]
+        colors: colors,
+        color: function(selection, color){
+            return formatDoc('forecolor', color)(selection);
+        },
+        bgColor: function(selection, color){
+            return formatDoc('hilitecolor', color)(selection);
+        },
+
+        justifyLeft: formatDoc('justifyleft'),
+        justifyCenter: formatDoc('justifycenter'),
+        justifyRight: formatDoc('justifyright'),
+        justifyFull: formatDoc('justifyfull'),
+
+        ol: formatDoc('insertorderedlist'),
+        ul: formatDoc('insertunorderedlist'),
+        indent: formatDoc('indent'),
+        outdent: formatDoc('outdent'),
+
+        unlink: formatDoc('unlink'),
+        link: function(selection, url, name){ // selection, [url || usePrompt]
             if(!(url || url==='')){
-		url = prompt('Please enter link url','http://');
+                url = prompt('Please enter link url','http://');
             }
             if(url) {
-		var link = angular.element('<a href="' +url+ '">' +(name || url)+ '</a>');
-		insertNodeAtSelection(selection, link[0]);
-		return selection.parent.html();
-	    }
-	    else return '';
-	},
-	
-	image: function(selection, url){ // selection, [url || usePrompt]
-            if(!(url || url==='')){
-                url = prompt('Please enter image url','http://');
+                var link = angular.element('<a href="' +url+ '">' +(name || url)+ '</a>');
+                insertNodeAtSelection(selection, link[0]);
+                return selection.parent.html();
             }
-            if(url) {
-		var img = angular.element('<img src="' +url+ '">');
-		insertNodeAtSelection(selection, img[0]);
-		return selection.parent.html();
-	    }
             else return '';
-	},
+        },
 	
-	table: function(selection, cols, rows){
-	    rows = parseInt(rows,10);
-	    cols = parseInt(cols,10);
-	    var doc = $document[0];
-	    
-	    if ((rows > 0) && (cols > 0)) {
-		var table = doc.createElement('table');
-		var thead = doc.createElement('thead');
-		var tbody = doc.createElement('tbody');
-		var th,tr,td,br;
-		
-		tr = doc.createElement('tr');
-		for (var j=0; j < cols; j++) {
-		    th = doc.createElement('th');
-            th.innerHTML = 'col '+(j+1);
-		    br = doc.createElement('br');
-		    th.appendChild(br);
-		    tr.appendChild(th);
-		}
-		thead.appendChild(tr);
-		
-		for (var i=0; i < rows; i++) {
-		    tr = doc.createElement('tr');
-		    for (var j=0; j < cols; j++) {
-			td = doc.createElement('td');
-            td.innerHTML = 'row '+(i+1);
-			br = doc.createElement('br');
-			td.appendChild(br);
-			tr.appendChild(td);
-		    }
-		    tbody.appendChild(tr);
-		}
-		table.appendChild(thead);
-		table.appendChild(tbody);      
-		insertNodeAtSelection(selection, table);
-	    }
-	    
-	    return selection.parent.html();
-	},
+        image: function(selection, url){ // selection, [url || usePrompt]
+            if(!(url || url==='')){
+                    url = prompt('Please enter image url','http://');
+            }
+            if(url) {
+                var img = angular.element('<img src="' +url+ '">');
+                insertNodeAtSelection(selection, img[0]);
+                return selection.parent.html();
+            }
+            else return '';
+        },
 	
-	hr: formatDoc('inserthorizontalrule')
-	
-	// TODO:
-	// blocquote: wrapText('\n> ','','blocquote text'),
+        table: function(selection, cols, rows){
+            rows = parseInt(rows,10);
+            cols = parseInt(cols,10);
+            var doc = $document[0];
+
+            if ((rows > 0) && (cols > 0)) {
+                var table = doc.createElement('table');
+                var thead = doc.createElement('thead');
+                var tbody = doc.createElement('tbody');
+                var th,tr,td,br;
+
+                tr = doc.createElement('tr');
+                for (var j=0; j < cols; j++) {
+                    th = doc.createElement('th');
+                    th.innerHTML = 'col '+(j+1);
+                    br = doc.createElement('br');
+                    th.appendChild(br);
+                    tr.appendChild(th);
+                }
+                thead.appendChild(tr);
+
+                for (var i=0; i < rows; i++) {
+                    tr = doc.createElement('tr');
+                    for (var j=0; j < cols; j++) {
+                        td = doc.createElement('td');
+                        td.innerHTML = 'row '+(i+1);
+                        br = doc.createElement('br');
+                        td.appendChild(br);
+                        tr.appendChild(td);
+                    }
+                    tbody.appendChild(tr);
+                }
+                table.appendChild(thead);
+                table.appendChild(tbody);      
+                insertNodeAtSelection(selection, table);
+            }
+
+            return selection.parent.html();
+        },
+
+        hr: formatDoc('inserthorizontalrule')
+
+        // TODO:
+        // blocquote: wrapText('\n> ','','blocquote text'),
     };
     
     this.editor = editor;
     
     return this;
 }])
-.directive('contenteditable', ['$sce', function($sce) {
+.directive('neContenteditable', ['$sce', function($sce) {
     return {
 	restrict: 'A', // only activate on element attribute
 	require: '?ngModel', // get a hold of NgModelController
 	link: function(scope, element, attrs, ngModel) {
 	    if(!ngModel) return; // do nothing if no ng-model
+        if(!attrs['contenteditable']) element.attr('contenteditable', 'true');
 	    
 	    // Specify how UI should be updated
 	    ngModel.$render = function() {
@@ -407,9 +408,10 @@ angular.module('neContentEditors',[])
         require:'^ngModel',
         scope:{ neSelectionModel:'=' },
         link: function(scope, element, attrs, ctrl){
-            if(element[0].nodeName !== 'TEXTAREA' && attrs.contenteditable!=='true')
+            if(element[0].nodeName !== 'TEXTAREA' && attrs.contenteditable!=='true'){
                 throw new Error('neSelectionModel directive can be used only on <textarea> or contentEditable="true" element');
-
+            }
+            
             function TextAreaSelection(){
 
                 function setSelection(e, start, end){

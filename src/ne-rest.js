@@ -454,7 +454,10 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
         var fd = new FormData();
         
         for(var key in data) {
-            fd.append(key, data[key]);
+            if(data[key] instanceof Blob || data[key] instanceof File) {
+                fd.append(key, data[key], data[key].name);
+            }
+            else fd.append(key, data[key]);
         }
         
         function handleResponse(res, type) {

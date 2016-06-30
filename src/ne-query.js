@@ -110,7 +110,7 @@ angular.module('neQuery',['neLocal','neObject'])
                        '        </div>'+
                        '    </div>'+
                        '    <div ng-if="query.length" class="visible-inline-block" style="position:relative;">'+
-                       '        <small>{{query.logical | translate}}<br></small>'+
+                       '        <small>{{ ($first ? \' \' : query.logical) | translate}}<br></small>'+
                        '        <div class="btn-group btn-group-xs" style="position:absolute;right:0px;top:1px">'+
                        '            <button class="btn btn-default" style="border:1px dashed #999;border-right:none;color:#999;border-bottom: 1px solid transparent;" ng-click="query.next(\'AND\')">{{::\'AND\' | translate}}</button>'+
                        '            <button class="btn btn-default" style="border:none;border-top:1px dashed #999;color:#999;border-bottom: 1px solid transparent;" ng-click="query.next(\'OR\')">{{::\'OR\' | translate}}</button>'+
@@ -414,7 +414,7 @@ angular.module('neQuery',['neLocal','neObject'])
                 andGroups[g].push(query[i]);
             }
             
-            // no OR query, just ands
+            // no OR query, just ANDs
             if(g===0) {
                 var presult, 
                     wrappedByAnd = false, 
@@ -435,7 +435,7 @@ angular.module('neQuery',['neLocal','neObject'])
                             else {
                                 // key conflict, and field has no merge method, need to wrap it by AND
                                 delete result[ pkey ]; // this field will be inside $and
-                                result = object.extend(true, result, queries['AND'].build(andGroup));
+                                result = queries['AND'].build(andGroup); // object.extend(true, {}, queries['AND'].build(andGroup));
                                 wrappedByAnd = true;
                                 break;
                             }
@@ -454,7 +454,7 @@ angular.module('neQuery',['neLocal','neObject'])
         else if(query.operator && query.field && query.field.key) {
             value = angular.copy(query.value);
             if(query.type.onBuild) value = query.type.onBuild(value);
-            if(!query.field.isEmptyValue(value)){
+            if(!query.field.isEmptyValue || !query.field.isEmptyValue(value)){
                 value = queries[ query.operator ].build(typeof query.field.onBuild==='function' ? query.field.onBuild(value) : value);
                 if(value!==undefined && value!==null) {
                     if(query.field.build) {
@@ -544,7 +544,9 @@ angular.module('neQuery',['neLocal','neObject'])
                     // if parent logical !== result logical, and it is first item inside logical group, its logical will be parent logical
                     // pseudo example 1: or[ and[1,2], or[1,2], and[1,2] ]
                     // pseudo example 2: and[ or[1,2], and[1,2], or[1,2] ]
-                    if(keys.length===1) query.parse(result.queries[i], i===0 && parentLogical ? parentLogical : result.logical);
+                    // pseudo example 3: and[ or[1,2], or[1,2] ]
+                    // pseudo example 4: or[ and[1,2], and[1,2] ]
+                    if(keys.length===1 && !parentLogical) query.parse(result.queries[i], i===0 && parentLogical ? parentLogical : result.logical);
                     
                     // if mixed ANDs or ORs with other keys, create one child and then append to it all remaining queries
                     else if(child) child.parse(result.queries[i], result.logical);
@@ -1341,7 +1343,7 @@ angular.module('neQuery',['neLocal','neObject'])
         var q = newQuery.call({ fields:fields, types:Object.keys(types) },'AND'); // default logical is AND
         q.name = name;
         q.onlyPredefinedFields = opts.onlyPredefinedFields;
-
+        
         q.append('AND');
         
         return q;
@@ -1351,5 +1353,241 @@ angular.module('neQuery',['neLocal','neObject'])
     Query.fieldBehaviours = fieldBehaviours;
     
     return Query;
+}])
+.factory('neQueryTests', ['NeQuery','neObject', function(Query, object){
+    
+    return function(){
 
+        var q = new Query();
+
+        function testQuery(name, inputQuery, compareQuery){
+            var builtQuery = q.fill(inputQuery).build();
+            var isEqual = object.deepEqual(compareQuery || inputQuery, builtQuery, function(key){
+                return key==='$sort';
+            });
+            if(!isEqual) console.warn('Query test failed "' +name+ '", input query do not match built one', compareQuery || inputQuery, builtQuery);
+            else console.log('Query test "' +name+ '" - OK');
+        }
+
+        /*
+         * simple queries
+         */
+        testQuery('simple range query', { field1:{ $gte:1, $lte:2 } });
+        testQuery('simple and[1,2]', { field1:'value1', field2:'value2' });
+        testQuery('simple and[1,2] with $and operator', { $and:[{field1:'value1'}, {field2:'value2'} ] }, { field1:'value1', field2:'value2' });
+        testQuery('simple or[1,2] with $or operator', { $or:[{field1:'value1'}, {field2:'value2'} ] });
+
+        /*
+         * nested queries
+         */
+
+        // or[ and[1,2], or[1,2], and[1,2] ]
+        testQuery('or[ and[1,2], or[1,2], and[1,2] ]', { 
+            $and:[
+                { 
+                    $or:[
+                        { field1_or1: 'value1_or1' }, 
+                        { field2_or1: 'value2_or1' } 
+                    ]
+                },
+                { 
+                    $or:[
+                        { field1_or2: 'value1_or2' }, 
+                        { field2_or2: 'value2_or2' } 
+                    ]
+                }
+            ]
+        });
+
+        // or[ or[1,2], and[1,2], or[1,2] ]
+        testQuery('or[ or[1,2], and[1,2], or[1,2] ]', { 
+            $or:[
+                { 
+                    $or:[
+                        { field1_or1: 'value1_or1' }, 
+                        { field2_or1: 'value2_or1' } 
+                    ]
+                },
+                { 
+                    $and:[
+                        { field1_and1: 'value1_and1' }, 
+                        { field2_and1: 'value2_and1' } 
+                    ]
+                },
+                { 
+                    $or:[
+                        { field1_or2: 'value1_or2' }, 
+                        { field2_or2: 'value2_or2' } 
+                    ]
+                }
+            ]
+        },{ 
+            $or:[
+                { 
+                    $or:[
+                        { field1_or1: 'value1_or1' }, 
+                        { field2_or1: 'value2_or1' } 
+                    ]
+                },
+                { 
+                    field1_and1: 'value1_and1', 
+                    field2_and1: 'value2_and1'
+                },
+                { 
+                    $or:[
+                        { field1_or2: 'value1_or2' }, 
+                        { field2_or2: 'value2_or2' } 
+                    ]
+                }
+            ]
+        });
+
+        // and[ or[1,2], and[1,2], or[1,2] ]
+        testQuery('and[ or[1,2], and[1,2], or[1,2] ]', { 
+            $and:[
+                { 
+                    $or:[
+                        { field1_or1: 'value1_or1' }, 
+                        { field2_or1: 'value2_or1' } 
+                    ]
+                },
+                { 
+                    $and:[
+                        { field1_and1: 'value1_and1' }, 
+                        { field2_and1: 'value2_and1' } 
+                    ]
+                },
+                { 
+                    $or:[
+                        { field1_or2: 'value1_or2' }, 
+                        { field2_or2: 'value2_or2' } 
+                    ]
+                }
+            ]
+        },{ 
+            $and:[
+                { 
+                    $or:[
+                        { field1_or1: 'value1_or1' }, 
+                        { field2_or1: 'value2_or1' } 
+                    ]
+                },
+                { 
+                    field1_and1: 'value1_and1', 
+                    field2_and1: 'value2_and1'
+                },
+                { 
+                    $or:[
+                        { field1_or2: 'value1_or2' }, 
+                        { field2_or2: 'value2_or2' } 
+                    ]
+                }
+            ]
+        });
+
+        // and[ or[1,2], or[1,2] ]
+        testQuery('and[ or[1,2], or[1,2] ]', { 
+            $and:[
+                { 
+                    $or:[
+                        { field1_or1: 'value1_or1' }, 
+                        { field2_or1: 'value2_or1' } 
+                    ]
+                },
+                { 
+                    $or:[
+                        { field1_or2: 'value1_or2' }, 
+                        { field2_or2: 'value2_or2' } 
+                    ]
+                }
+            ]
+        });
+
+        // or[ and[1,2], and[1,2] ]
+        testQuery('or[ and[1,2], and[1,2] ]', { 
+            $or:[
+                { 
+                    $and:[
+                        { field1_and1: 'value1_and1' }, 
+                        { field2_and1: 'value2_and1' } 
+                    ]
+                },
+                { 
+                    $and:[
+                        { field1_and2: 'value1_and2' }, 
+                        { field2_and2: 'value2_and2' } 
+                    ]
+                }
+            ]
+        },{ 
+            $or:[
+                { field1_and1: 'value1_and1', field2_and1: 'value2_and1' },
+                { field1_and2: 'value1_and2', field2_and2: 'value2_and2' }
+            ]
+        });
+
+        /*
+         * nested, nested with ragne queries
+         */
+
+        // or[ or[1,range], and[range,1,2, or[1,2] ], or[range,range] ]
+        testQuery('or[ or[1,range], and[range,1,2], or[range,range] ]', { 
+            $or:[
+                { 
+                    $or:[
+                        { field1_or1: 'value1_or1' }, 
+                        { field2_or1: { $gt:1, $lt:100 } } 
+                    ]
+                },
+                { 
+                    $and:[
+                        { field1_and1: { $gt:1, $lt:100 } }, 
+                        { field1_and1: 'value1_and1' }, 
+                        { field2_and1: 'value2_and1' },
+                        { 
+                            $or:[
+                                { field1_and1_or: { $gte:1, $lte:100 } }, 
+                                { field2_and1_or: 'value2_and1_or' } 
+                            ]
+                        }
+                    ]
+                },
+                { 
+                    $or:[
+                        { field1_or2: { $gte:1, $lte:100 } }, 
+                        { field2_or2: { $gte:1, $lte:100 } } 
+                    ]
+                }
+            ]
+        },{ 
+            $or:[
+                { 
+                    $or:[
+                        { field1_or1: 'value1_or1' }, 
+                        { field2_or1: { $gt:1, $lt:100 } } 
+                    ]
+                },
+                { 
+                    $and:[
+                        { field1_and1: { $gt:1 } },
+                        { field1_and1: { $lt:100 } },
+                        { field1_and1: 'value1_and1' }, 
+                        { field2_and1: 'value2_and1' },
+                        { 
+                            $or:[
+                                { field1_and1_or: { $gte:1, $lte:100 } }, 
+                                { field2_and1_or: 'value2_and1_or' } 
+                            ]
+                        }
+                    ]
+                },
+                { 
+                    $or:[
+                        { field1_or2: { $gte:1, $lte:100 } }, 
+                        { field2_or2: { $gte:1, $lte:100 } } 
+                    ]
+                }
+            ]
+        });
+    };
 }]);

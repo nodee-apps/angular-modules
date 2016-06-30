@@ -52,6 +52,71 @@ angular.module('ui.bootstrap.ext', ['ui.bootstrap'])
     };
 }])
 
+// FIX: openScope is undefined when dropdown is in modal
+.service('uibDropdownService', ['$document', '$rootScope', function($document, $rootScope) {
+    var openScope = null;
+
+    this.open = function(dropdownScope, element) {
+        if (!openScope) {
+            $document.on('click', closeDropdown);
+            element.on('keydown', keybindFilter);
+        }
+
+        if (openScope && openScope !== dropdownScope) {
+            openScope.isOpen = false;
+        }
+
+        openScope = dropdownScope;
+    };
+
+    this.close = function(dropdownScope, element) {
+        if (openScope === dropdownScope) {
+            openScope = null;
+            $document.off('click', closeDropdown);
+            element.off('keydown', keybindFilter);
+        }
+    };
+
+    var closeDropdown = function(evt) {
+        // This method may still be called during the same mouse event that
+        // unbound this event handler. So check openScope before proceeding.
+        if (!openScope) { return; }
+
+        if (evt && openScope.getAutoClose() === 'disabled') { return; }
+
+        if (evt && evt.which === 3) { return; }
+
+        var toggleElement = openScope.getToggleElement();
+        if (evt && toggleElement && toggleElement[0].contains(evt.target)) {
+            return;
+        }
+
+        var dropdownElement = openScope.getDropdownElement();
+        if (evt && openScope.getAutoClose() === 'outsideClick' &&
+            dropdownElement && dropdownElement[0].contains(evt.target)) {
+            return;
+        }
+
+        openScope.isOpen = false;
+
+        if (!$rootScope.$$phase) {
+            openScope.$apply();
+        }
+    };
+
+    var keybindFilter = function(evt) {
+        if (evt.which === 27) {
+            evt.stopPropagation();
+            if(openScope) openScope.focusToggleElement();
+            closeDropdown();
+        } else if (openScope && openScope.isKeynavEnabled() && [38, 40].indexOf(evt.which) !== -1 && openScope.isOpen) {
+            evt.preventDefault();
+            evt.stopPropagation();
+            openScope.focusDropdownEntry(evt.which);
+        }
+    };
+}])
+
 // FIX: keyboard nav when dropdown menu is not in DOM, if(elems[self.selectedOption]) elems[self.selectedOption].focus();
 .controller('UibDropdownController', ['$scope', '$element', '$attrs', '$parse', 'uibDropdownConfig', 'uibDropdownService', '$animate', '$uibPosition', '$document', '$compile', '$templateRequest', function($scope, $element, $attrs, $parse, dropdownConfig, uibDropdownService, $animate, $position, $document, $compile, $templateRequest) {
     var self = this,

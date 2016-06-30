@@ -194,13 +194,13 @@ angular.module('neObject',[])
         var array = [];
         
         for(var key in obj) {
-            if(obj.hasOwnProperty(key)){
+            if(key!=='$key' && key!=='$sortIndex' && obj.hasOwnProperty(key)){
                 obj.$key = key;
-                obj.$sortIndex = deepGet(obj[key], sortNamespace);
+                if(sortNamespace) obj.$sortIndex = deepGet(obj[key], sortNamespace);
                 array.push(obj[key]);
             }
         }
-        return sortArray('$sortIndex', dir || 'asc', array);
+        return sortNamespace ? sortArray('$sortIndex', dir || 'asc', array) : array;
     }
     
     function arrayToObject(array, idNamespace){

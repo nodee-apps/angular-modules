@@ -42,6 +42,21 @@ angular.module('neTree',['neObject'])
                        '    </ul>' +
                        '    <div class="tree-backdrop" ng-show="tree.disabled"></div>' +
                        '</div>');
+    
+    $templateCache.put('neTree/tree-item-pagination.html',
+                       '<div ng-if="item.$expanded" class="tree-item-pagination" ng-class="{\'tree-item-pagination-border\':item.$children.length}">'+
+                       '    <div ng-if="item.$pagination && !item.$paginationDisabled" class="btn-group btn-group-xs">'+
+                       '        <button class="btn btn-light btn-xs" ng-click="tree.setPage(item, \'prev\')" ng-disabled="item.$prevDisabled">'+
+                       '            <i class="fa fa-backward"></i>'+
+                       '        </button>'+
+                       '        <button class="btn btn-light btn-xs" ng-click="tree.addPage(item)" ng-disabled="item.$nextDisabled">'+
+                       '            {{item.$pagination.page}} <span ng-if="item.$pagination.pagesCount">{{::\'of\'|translate}} {{item.$pagination.pagesCount}}</span>'+
+                       '        </button>'+
+                       '        <button class="btn btn-light btn-xs" ng-click="tree.setPage(item, \'next\')" ng-disabled="item.$nextDisabled">'+
+                       '            <i class="fa fa-forward"></i>'+
+                       '        </button>'+
+                       '    </div>'+
+                       '</div>');
 }])
 .directive('neTreeUpdateBlur', ['$timeout', function($timeout){
     return {
@@ -116,6 +131,15 @@ angular.module('neTree',['neObject'])
         link: function(scope, elm, attrs){
             scope.tree.itemTemplate = scope.tree.itemTemplate || 'neTree/item.html';
             //scope.$eval(attrs.treeview);
+        }
+    };
+}])
+.directive('neTreeItemPagination', [function(){    
+    return {
+        restrict:'EA',
+        templateUrl: 'neTree/tree-item-pagination.html',
+        link: function(scope, elm, attrs){
+
         }
     };
 }])
@@ -535,6 +559,7 @@ angular.module('neTree',['neObject'])
                 if(query.$sort) query.$sort = angular.merge({}, tree.defaultSort ,query.$sort);
                 
                 if(parent) parent.$query = query;
+                else delete query.$limit;
                 tree.disabled = true;
                 tree.getResourceMethod('find', parent)(query, function(items, pagination){
                     tree.fillItems(parent, items, pagination, loadMode);
