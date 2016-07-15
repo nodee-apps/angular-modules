@@ -307,13 +307,14 @@ angular.module('neObject',[])
     
     // auto parse dates
     var regexIso8601 = /^(\d{4}|\+\d{6})(?:-(\d{2})(?:-(\d{2})(?:T(\d{2}):(\d{2}):(\d{2})\.(\d{1,})(Z|([\-+])(\d{2}):(\d{2}))?)?)?)?$/;
-    var regexIsoJson = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2}(?:\.\d*))(?:Z|(\+|-)([\d|:]*))?$/;
+    var regexIsoStrict = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2}(?:\.\d*))(?:Z|(\+|-)([\d|:]*))?$/;
 
-    function dateStringsToDates(input, useIsoJson) {
+    function dateStringsToDates(input, useStrictDateParser) {
+        if(useStrictDateParser === undefined) useStrictDateParser = true; // only if forced to not use strict
         var value, match, milliseconds;
 
         // try to parse if input is string
-        if(typeof input === 'string' && (match = input.match(useIsoJson ? regexIsoJson : regexIso8601))) {
+        if(typeof input === 'string' && (match = input.match(useStrictDateParser ? regexIsoStrict : regexIso8601))) {
             milliseconds = Date.parse(match[0]);
             if (!isNaN(milliseconds)) {
                 input = new Date(milliseconds);
@@ -328,7 +329,7 @@ angular.module('neObject',[])
             value = input[key];
 
             // Check for string properties which look like dates.
-            if(typeof value === 'string' && (match = value.match(useIsoJson ? regexIsoJson : regexIso8601))) {
+            if(typeof value === 'string' && (match = value.match(useStrictDateParser ? regexIsoStrict : regexIso8601))) {
                 milliseconds = Date.parse(match[0]);
                 if (!isNaN(milliseconds)) {
                     input[key] = new Date(milliseconds);
@@ -336,20 +337,20 @@ angular.module('neObject',[])
             }
             else if (typeof value === 'object') {
                 // Recurse into object
-                dateStringsToDates(value, useIsoJson);
+                dateStringsToDates(value, useStrictDateParser);
             }
         }        
         return input;
     }
     
-    function fromJson(str, useIsoJson){
+    function fromJson(str, useStrictDateParser){
         var result;
         try {
             result = JSON.parse(str);
         }
         catch(err){}
         
-        return dateStringsToDates(result, useIsoJson);
+        return dateStringsToDates(result, useStrictDateParser);
     }
     
     function removePrefixedProps(input, prefix) {
