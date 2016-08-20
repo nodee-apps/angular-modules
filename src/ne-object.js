@@ -367,9 +367,18 @@ angular.module('neObject',[])
             }
         }
     }
+    
+    function isObject(obj){
+        return Object.prototype.toString.call(obj) === '[object Object]';
+    }
 
+    function isArray(obj){
+        return Array.isArray(obj);
+    }
     
     return {
+        isObject: isObject,
+        isArray: isArray,
         extendReservedInstances: [File, FileList, Blob],
         extend: extend,
         setObjValue: deepSet,
