@@ -3013,8 +3013,8 @@ angular.module('neGrid',['neObject','neLocal'])
         this.pagination = { page: settings.page || this.defaultQuery.$page || 1 };
         this.page = this.pagination.page;
         this.pagesCount = 1;
-        this.query = angular.merge({}, settings.query || {}, { $page:this.page, $limit:this.limit }, this.defaultQuery);
-        this.sort = angular.merge({}, this.defaultSort || {}, settings.sort || {});
+        this.query = object.extend('data', {}, settings.query || {}, { $page:this.page, $limit:this.limit }, this.defaultQuery);
+        this.sort = object.extend('data', {}, this.defaultSort || {}, settings.sort || {});
         this.items = [];
         this.disabled = true; // default grid state is disabled
         
@@ -3163,7 +3163,7 @@ angular.module('neGrid',['neObject','neLocal'])
     
     function setQuery(newQuery, cb){
         var grid = this;
-        grid.query = angular.merge({}, grid.defaultQuery || {}, newQuery || {});
+        grid.query = object.extend('data', {}, grid.defaultQuery || {}, newQuery || {});
         grid.setPage(grid.query.$page || 'first', cb, newQuery);
         return grid;
     }
@@ -3182,17 +3182,17 @@ angular.module('neGrid',['neObject','neLocal'])
         if(!grid.limit || grid.limit < 0) grid.limit = grid.defaultLimit;
         else if(grid.limit > grid.maxLimit) grid.limit = grid.maxLimit;
         
-        var query = angular.merge({}, newQuery, { $limit:grid.limit, $sort:{}, $page:grid.page });
+        var query = object.extend('data', {}, newQuery, { $limit:grid.limit, $sort:{}, $page:grid.page });
         
         // merge sort with defaultSort
         if(grid.sort) query.$sort = grid.sort;
-        query.$sort = angular.merge({}, grid.defaultSort || {}, query.$sort || {});
+        query.$sort = object.extend('data', {}, grid.defaultSort || {}, query.$sort || {});
         if(Object.keys(query.$sort).length===0) delete query.$sort;
         
         delete grid.query.$page;
         delete grid.query.$sort;
         delete grid.query.$limit;
-        grid.query = angular.merge(query, grid.query || {});
+        grid.query = object.extend('data', query, grid.query || {});
         
         if(grid.onQuery && !grid.silentMode) grid.onQuery(grid.query);
         
@@ -3215,7 +3215,7 @@ angular.module('neGrid',['neObject','neLocal'])
         grid.getResourceMethod('update', item)(item, function(data){
             var index = grid.items.indexOf(item);
             var oldItem = angular.copy(item);
-            grid.items[ index ] = angular.extend(grid.items[ index ], data);
+            grid.items[ index ] = object.extend('data', grid.items[ index ], data);
             if(grid.onUpdate) grid.onUpdate(grid.items[ index ], oldItem);
             if(cb) cb(grid.items[ index ]);
         });
@@ -3230,7 +3230,7 @@ angular.module('neGrid',['neObject','neLocal'])
         
         grid.getResourceMethod('find', item)(idQuery, function(items, pagination){
             var index = grid.items.indexOf(item);
-            grid.items[ index ] = angular.extend(grid.items[ index ], items[0]);
+            grid.items[ index ] = object.extend('data', grid.items[ index ], items[0]);
             if(cb) cb(grid.items[ index ]);
         });
         return grid;
@@ -4159,14 +4159,14 @@ angular.module('neObject',[])
             length = arguments.length,
             deep = false;
         // Handle a deep copy situation
-        if ( typeof target === "boolean" ) {
+        if ( typeof target === 'boolean' || target === 'data' ) {
             deep = target;
             target = arguments[1] || {};
             // skip the boolean and the target
             i = 2;
         }
         // Handle case when target is a string or something (possible in deep copy)
-        if ( typeof target !== "object" && typeof target !== "function") {
+        if ( typeof target !== 'object' && typeof target !== 'function') {
             target = {};
         }
         for ( ; i < length; i++ ) {
@@ -4198,6 +4198,11 @@ angular.module('neObject',[])
                     if ( deep && copy && ( isPlainObject(copy) || (copyIsArray = Array.isArray(copy)) ) ) {
                         if ( copyIsArray ) {
                             copyIsArray = false;
+                            if(deep === 'data') {
+                                // if data mode, do not merge arrays, just copy
+                                target[ name ] = copy.slice(0);
+                                continue;
+                            }
                             clone = src && Array.isArray(src) ? src : [];
                         } else {
                             clone = src && isPlainObject(src) ? src : {};
@@ -4295,21 +4300,34 @@ angular.module('neObject',[])
         delete obj[keys[keys.length-1]]; // delete last prop
     }
     
-    function sortArray(keyName, dir, array){
+    function sortArray(keyName, dir, array){ // sortArray({ key1:1, key2:-1 }, dir)
+        var keys;
+        
         if(arguments.length===2){
-            array = arguments[1];
-            dir = 1;
+            if(isObject(keyName)) {
+                keys = keyName;
+                array = arguments[1];
+            }
+            else {
+                array = arguments[1];
+                dir = 1;
+            }
+        }
+        else {
+            keys = {};
+            keys[keyName] = dir;
         }
         
-        if(dir==='asc') dir=1;
-        if(dir==='desc') dir=-1;
+        for(var key in keys){
+            if(keys[key]==='asc') keys[key] = 1;
+            if(keys[key]==='desc') keys[key] = -1;
+        }
         
         array.sort(function(a, b) {
-            if (a[keyName] > b[keyName])
-              return dir;
-            if (a[keyName] < b[keyName])
-              return -dir;
-            // a must be equal to b
+            for(var key in keys){
+                if( deepGet(a, key) > deepGet(b, key)) return keys[key];
+                if( deepGet(a, key) < deepGet(b, key)) return -keys[key];
+            }
             return 0;
         });
         
@@ -4505,8 +4523,9 @@ angular.module('neObject',[])
     return {
         isObject: isObject,
         isArray: isArray,
-        extendReservedInstances: [File, FileList, Blob],
+        extendReservedInstances: [], // [File, FileList, Blob],
         extend: extend,
+        merge: extend,
         setObjValue: deepSet,
         deepSet: deepSet,
         getObjValue: deepGet,
@@ -4523,6 +4542,7 @@ angular.module('neObject',[])
         removePrefixedProps: removePrefixedProps,
         debounce: debounce
     };
+
 }]);
 /**
  *                                                  NE QUERY
@@ -4561,7 +4581,7 @@ angular.module('neQuery',['neLocal','neObject'])
         OR:'OR',
         AND:'AND',
         choose:'(choose)',
-        
+
         qtype_short_number:'0-9',
         qtype_short_date:'Date',
         qtype_short_datetime:'Time',
@@ -4569,7 +4589,7 @@ angular.module('neQuery',['neLocal','neObject'])
         qtype_short_string:'A-Z',
         qtype_short_array:'[A]',
         qtype_short_object:'{O}',
-        
+
         qtype_number:'Number',
         qtype_date:'Date',
         qtype_datetime:'Date & Time',
@@ -4577,7 +4597,7 @@ angular.module('neQuery',['neLocal','neObject'])
         qtype_string:'Text',
         qtype_array:'Array',
         qtype_object:'Object',
-        
+
         qvalue_true:'True',
         qvalue_false:'False',
         Search:'Search',
@@ -4646,7 +4666,7 @@ angular.module('neQuery',['neLocal','neObject'])
                        '</div>'+
                        '<br ng-repeat-end>'+
                        '</div>');
-    
+
     $templateCache.put('neQuery/date.html',
                        '<input type="text" '+
                        '       class="input-sm" '+
@@ -4656,7 +4676,7 @@ angular.module('neQuery',['neLocal','neObject'])
                        '       ng-click="query.value_opened=!query.value_opened" '+
                        '       ng-model="query.value"'+
                        '       ng-change="onChange()"/>');
-    
+
     $templateCache.put('neQuery/datetime.html',
                        '<input type="text" '+
                        '       class="input-sm" '+
@@ -4667,7 +4687,7 @@ angular.module('neQuery',['neLocal','neObject'])
                        '       ng-click="query.value_opened=!query.value_opened" '+
                        '       ng-model="query.value"' +
                        '       ng-change="onChange()"/>');
-    
+
     $templateCache.put('neQuery/number.html',
                        '<input type="number" '+
                        '       class="input-sm" '+
@@ -4675,7 +4695,7 @@ angular.module('neQuery',['neLocal','neObject'])
                        '       ng-model="query.value" '+
                        '       ng-change="onChange()" '+
                        '       style="width:142px;"/>');
-    
+
     $templateCache.put('neQuery/list.html',
                        '<select class="input-sm" '+
                        '        ng-model="query.value" '+
@@ -4683,7 +4703,7 @@ angular.module('neQuery',['neLocal','neObject'])
                        '        ng-change="onChange()" '+
                        '        style="width:142px;">'+
                        '</select>');
-    
+
     $templateCache.put('neQuery/boolean.html',
                        '<select class="input-sm" '+
                        '        ng-model="query.value" '+
@@ -4691,14 +4711,14 @@ angular.module('neQuery',['neLocal','neObject'])
                        '        ng-change="onChange()" '+
                        '        style="width:142px;">'+
                        '</select>');
-    
+
     $templateCache.put('neQuery/string.html',
                        '<input type="text" '+
                        '       class="input-sm" '+
                        '       placeholder="{{(query.field.isEmptyValue(query.value) ? (query.field.placeholder||\'type value\') : \'empty value\')|translate}}" '+
                        '       ng-model="query.value" '+
                        '       ng-change="onChange()"/>');
-    
+
     $templateCache.put('neQuery/string-suggestions.html',
                        '<div class="dropdown visible-inline-block" uib-dropdown keyboard-nav>'+
                        '    <input type="text" '+
@@ -4709,16 +4729,16 @@ angular.module('neQuery',['neLocal','neObject'])
                        '           ng-change="query.field.onlySuggestedValues ? query.value=null : query.value=query.suggestion;query.field.createSuggestions(query, query.suggestion);onChange()">'+
                        '    <ul ng-if="query.suggestions.length" class="dropdown-menu" style="max-height:220px;overflow:auto">'+
                        '        <li ng-repeat="value in query.suggestions" ng-class="{\'active\':(value===query.value)}">'+
-                       '          <a href="" ng-click="query.value=value;query.suggestion=value;onChange()">'+
-                       '		      {{value}}'+
+                       '          <a href="" ng-click="query.value=value.key;query.suggestion=value.name;onChange()">'+
+                       '		      {{value.name}}'+
                        '		  </a>'+
                        '        </li>'+
                        '    </ul>'+
                        '</div>');
-    
+
     $templateCache.put('neQuery/disabled.html',
                        '<input type="text" disabled="disabled" class="input-sm" ng-model="query.value"/>');
-    
+
     $templateCache.put('neQuery/sort.html',
                        '<div class="visible-inline-block">'+
                        '<div ng-repeat-start="sort in query.sortBy track by $index" style="display:inline-block;position:relative;margin:2px" ng-style="{\'margin-top\':$first ? \'0px\' : \'2px\'}">'+
@@ -4816,7 +4836,7 @@ angular.module('neQuery',['neLocal','neObject'])
     };
 }])
 .factory('NeQuery',['neLocal','neObject', function(local, object){
-    
+
     var templates = {
         query: 'neQuery/query.html',
         sort: 'neQuery/sort.html',
@@ -4829,22 +4849,22 @@ angular.module('neQuery',['neLocal','neObject'])
         list: 'neQuery/list.html',
         suggestions: 'neQuery/string-suggestions.html'
     };
-    
+
     // used when parsing query
     var querySortKey = '$sort';
     var queryOptionKeys = ['$limit', '$page', '$skip', '$sort'];
     var queryOptionKeyPrefix = '$';
-    
+
     function escapeRegExp(str) {
         return (str||'').replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, '\\$&');
     }
-    
+
     function unEscapeRegExp(str) {
         return (str||'').replace(/\\(?!\\)/g,'');
     }
-    
+
     var defaultType = 'string';
-    
+
     var types = {
         string:{
             name:'string',
@@ -4888,17 +4908,17 @@ angular.module('neQuery',['neLocal','neObject'])
             }
         }
     };
-    
+
     function buildSort(sortBy){
         if(!sortBy) return {};
         var query = this, s = {};
         s[querySortKey] = {};
         for(var i=0;i<sortBy.length;i++){
-            s[querySortKey][ sortBy[i].key ] = sortBy[i].direction; 
+            s[querySortKey][ sortBy[i].key ] = sortBy[i].direction;
         }
         return s;
     }
-    
+
     function parseSort(sortBy){
         var query = this, s = [];
         query.sortBy = []; // clean sort
@@ -4910,11 +4930,11 @@ angular.module('neQuery',['neLocal','neObject'])
         }
         return s;
     }
-    
+
     function isKeyConflict(dest, src){
         if(['string','number','boolean'].indexOf(typeof dest) > -1) return true;
         if(src === null || src === undefined || typeof src === 'function') return false;
-        
+
         // primitive type will cause override
         if(['string','number','boolean'].indexOf(typeof src) > -1) return true;
         else { // src is object
@@ -4924,30 +4944,30 @@ angular.module('neQuery',['neLocal','neObject'])
         }
         return false;
     }
-    
+
     function build(query, excludeSort){
         var result = {}, value;
         result = object.extend(true, result, query.options); // add query options to result
-        
+
         // nested logical query, need to group ands
         if(query.length) {
             var andGroups = [], g=0;
-                
+
             for(var i=0;i<query.length;i++){
                 if(i>0 && query[i].logical==='OR') g++;
                 andGroups[g] = andGroups[g] || [];
                 andGroups[g].push(query[i]);
             }
-            
+
             // no OR query, just ANDs
             if(g===0) {
-                var presult, 
-                    wrappedByAnd = false, 
+                var presult,
+                    wrappedByAnd = false,
                     andGroup = andGroups[g];
-                
+
                 for(var i=0;i<andGroup.length;i++){
                     presult = build(andGroup[i], true);
-                    
+
                     // check if there is key conflict:
                     // 1. no conflict scenario:  pkey:{ $lte:5 }, pkey:{ $gte:1 }
                     // 2. conflict scenario:  pkey:{ $regex:'5' }, pkey:{ $regex:'1' } or pkey:123, pkey:123
@@ -4967,7 +4987,7 @@ angular.module('neQuery',['neLocal','neObject'])
                         }
                         else result[pkey] = presult[pkey];
                     }
-                    
+
                     // don't continue if andGroup was wrapped by and
                     if(wrappedByAnd) break;
                 }
@@ -4990,21 +5010,21 @@ angular.module('neQuery',['neLocal','neObject'])
                 }
             }
         }
-        
+
         // build sort
         if(!excludeSort) result = object.extend(true, result, buildSort.call(query, query.sortBy));
-        
+
         return result;
     }
-    
+
     function parse(builtQuery, parentLogical){
         var query = this, result, child;
         var keys = [];
-        
+
         // filter reserved keys
         for(var key in builtQuery){
             if(['AND','OR','VALUE'].indexOf(key)!==-1) continue; // this are reserved keys for parsing
-            
+
             if(key===querySortKey){
                 parseSort.call(query, builtQuery[key]);
             }
@@ -5014,11 +5034,11 @@ angular.module('neQuery',['neLocal','neObject'])
             }
             else keys.push(key);
         }
-        
-        
+
+
         for(var k=0;k<keys.length;k++){
             key = keys[k];
-            
+
             // check for custom fields parsers
             var customParser=null;
             for(var f=0;f<query.fields.length;f++){
@@ -5027,7 +5047,7 @@ angular.module('neQuery',['neLocal','neObject'])
                     break;
                 }
             }
-            
+
             var modified = {};
             if(customParser) {
                 modified = customParser(key, builtQuery[key], parentLogical);
@@ -5036,7 +5056,7 @@ angular.module('neQuery',['neLocal','neObject'])
                     builtQuery[key] = modified.value;
                 }
                 else if(modified) builtQuery[key] = modified;
-                
+
                 if(Array.isArray(builtQuery[key])) {
                     for(var q in builtQuery[key]) {
                         parse.call(query, builtQuery[key][q].value, builtQuery[key][q].logical  || parentLogical);
@@ -5044,26 +5064,26 @@ angular.module('neQuery',['neLocal','neObject'])
                     continue;
                 }
             }
-            
+
             result = (queries[key] || queries.VALUE).parse(key, builtQuery[key]);
-            
+
             // not recognized, continue
             if(!result) {
                 if(modified.key) delete builtQuery[modified.key]; // - remove modified.key after parse
                 continue;
             }
-            
+
             // multiple operators in one key (e.g. range < >=), between have to be AND, but first
             else if(Array.isArray(result)){
                 for(var i=0;i<result.length;i++) {
                     addQuery(query, result[i], (k===0 && i===0) ? parentLogical : 'AND');
                 }
             }
-            
+
             // AND, or OR queries
             else if(result.queries) {
                 child = null;
-                
+
                 for(var i=0;i<result.queries.length;i++){
                     // if there is only one OR, or AND in query, no need to append child, just sibling
                     // if parent logical !== result logical, and it is first item inside logical group, its logical will be parent logical
@@ -5072,7 +5092,7 @@ angular.module('neQuery',['neLocal','neObject'])
                     // pseudo example 3: and[ or[1,2], or[1,2] ]
                     // pseudo example 4: or[ and[1,2], and[1,2] ]
                     if(keys.length===1 && !parentLogical) query.parse(result.queries[i], i===0 && parentLogical ? parentLogical : result.logical);
-                    
+
                     // if mixed ANDs or ORs with other keys, create one child and then append to it all remaining queries
                     else if(child) child.parse(result.queries[i], result.logical);
                     else {
@@ -5081,30 +5101,31 @@ angular.module('neQuery',['neLocal','neObject'])
                     }
                 }
             }
-            
+
             // direct value query, only first will have parentlogical, next has 'AND'
             else if(k===0) addQuery(query, result, parentLogical);
             else addQuery(query, result, 'AND');
-            
+
             if(modified.key) delete builtQuery[modified.key]; // - remove modified.key after parse
         }
-        
+
         function addQuery(query, result, logical){
             child = query.append(logical);
             child.type = types[result.typeName];
             child.value = result.value;
             child.setFieldByName(result.fieldName, true); // reset if defined, because default field (first) was already set
+            child.setValueByNameAndField();
             child.operator = result.operator; // force change operator to show original query operator, even if field has disabled changing operator
         }
-        
+
         return query;
     }
-    
+
     // date parse regex
     var regexIso8601 = /^(\d{4}|\+\d{6})(?:-(\d{2})(?:-(\d{2})(?:T(\d{2}):(\d{2}):(\d{2})\.(\d{1,})(Z|([\-+])(\d{2}):(\d{2}))?)?)?)?$/;
     function parseValueType(value){
         var type, match, milliseconds;
-        
+
         if(typeof value==='boolean') type = 'boolean';
         else if(typeof value==='number') type = 'number';
         else if(value instanceof Date) {
@@ -5123,14 +5144,14 @@ angular.module('neQuery',['neLocal','neObject'])
         }
         //else if(Array.isArray(value)) type = 'array';
         //else if(Object.prototype.toString.call(value)==='[object Object]') type = 'object';
-        
+
         return {
             type:type,
             value:value
         };
     }
-    
-    
+
+
     var queries = {
         AND:{ // called on build when AND operator
             build: function(value){
@@ -5157,7 +5178,7 @@ angular.module('neQuery',['neLocal','neObject'])
                 var siblings = [], sibling;
                 var vt = parseValueType(value), type = vt.type;
                 value = vt.value;
-                
+
                 if(Object.prototype.toString.call(value)==='[object Object]'){
                     for(var prop in value){
                         sibling = (queries[prop] || queries.VALUE).parse(key, value[prop]);
@@ -5165,7 +5186,7 @@ angular.module('neQuery',['neLocal','neObject'])
                     }
                     return siblings;
                 }
-                
+
                 if(type) return {
                     fieldName: key,
                     typeName: type,
@@ -5203,7 +5224,7 @@ angular.module('neQuery',['neLocal','neObject'])
             parse: function(key, value){
                 var vt = parseValueType(value), type = vt.type;
                 value = vt.value;
-                
+
                 if(type) return {
                     fieldName: key,
                     typeName: type,
@@ -5245,7 +5266,7 @@ angular.module('neQuery',['neLocal','neObject'])
             parse: function(key, value){
                 var vt = parseValueType(value), type = vt.type;
                 value = vt.value;
-                
+
                 if(type==='number' || type==='date' || type==='datetime') return {
                     fieldName: key,
                     typeName: type,
@@ -5259,7 +5280,7 @@ angular.module('neQuery',['neLocal','neObject'])
             parse: function(key, value){
                 var vt = parseValueType(value), type = vt.type;
                 value = vt.value;
-                
+
                 if(type==='number' || type==='date' || type==='datetime') return {
                     fieldName: key,
                     typeName: type,
@@ -5273,7 +5294,7 @@ angular.module('neQuery',['neLocal','neObject'])
             parse: function(key, value){
                 var vt = parseValueType(value), type = vt.type;
                 value = vt.value;
-                
+
                 if(type==='number' || type==='date' || type==='datetime') return {
                     fieldName: key,
                     typeName: type,
@@ -5287,7 +5308,7 @@ angular.module('neQuery',['neLocal','neObject'])
             parse: function(key, value){
                 var vt = parseValueType(value), type = vt.type;
                 value = vt.value;
-                
+
                 if(type==='number' || type==='date' || type==='datetime') return {
                     fieldName: key,
                     typeName: type,
@@ -5300,7 +5321,7 @@ angular.module('neQuery',['neLocal','neObject'])
             build: function(value){ return { $regex: value }; },
             parse: function(key, value){
                 var operator, op, match;
-                
+
                 for(var i=0;i<types.string.operators.length;i++){
                     op = types.string.operators[i];
                     if(queries[op] && queries[op].check && (match = queries[op].check(value)) !== undefined) {
@@ -5309,7 +5330,7 @@ angular.module('neQuery',['neLocal','neObject'])
                         break;
                     }
                 }
-                
+
                 return {
                     fieldName: key,
                     typeName: 'string',
@@ -5388,7 +5409,7 @@ angular.module('neQuery',['neLocal','neObject'])
             parse: function(key, value){
                 var vt = parseValueType(value), type = vt.type;
                 value = vt.value;
-                
+
                 if(type) return {
                     fieldName: key,
                     typeName: type,
@@ -5438,7 +5459,7 @@ angular.module('neQuery',['neLocal','neObject'])
             }
         }
     };
-    
+
     //var exampleQuery = [ //.OR=true
     //    'field operator value',
     //    [ //.AND=true
@@ -5453,16 +5474,16 @@ angular.module('neQuery',['neLocal','neObject'])
     //        'field operator value'
     //    ]
     //]
-    
-    
+
+
     function newQuery(logical){
         var q = [];
-        
+
         q.options = {}; // additional query options
         q.sortBy = [];
         q.build = function(excludeSort){ return build.call(this, this, excludeSort); };
         q.parse = function(builtQuery, logical){ return parse.call(this, builtQuery, logical); };
-        q.fill = function(builtQuery){ 
+        q.fill = function(builtQuery){
             this.splice(0, this.length); // clear array
             this.parse(builtQuery); // start with first child
             if((!this.parent || !this.parent()) && this.length===0) this.append('AND'); // if this is root query and there is no child, add one
@@ -5486,6 +5507,7 @@ angular.module('neQuery',['neLocal','neObject'])
         q.remove = remove;
         q.reset = reset;
         q.setFieldByName = setFieldByName;
+        q.setValueByNameAndField = setValueByNameAndField;
         q.setField = setField;
         q.setOperator = setOperator;
         q.setType = setType;
@@ -5494,17 +5516,17 @@ angular.module('neQuery',['neLocal','neObject'])
         q.toggleSortDirection = toggleSortDirection;
         q.setSortByName = setSortByName;
         q.setSortField = setSortField;
-        
+
         var parent;
         q.parent = q.getParent = function(){ return parent; };
         q.setParent = function(newParent){ parent = newParent; };
-        
+
         // set initial query state
         q.reset();
-        
+
         return q;
     }
-    
+
     function append(logical){
         var q = this.newQuery(logical);
         // make reference to parent non enumerable to prevent stack overflow when merging (it is circular reference)
@@ -5512,51 +5534,51 @@ angular.module('neQuery',['neLocal','neObject'])
         this.push(q);
         return q;
     }
-    
+
     function levelDown(logical){
         var self = this;
         if(!self.parent()) return;
-        
+
         // if this is only child of parent disable levelDovn
         if(self.parent().length<=1) return;
-        
+
         var index = self.parent().indexOf(self);
         var wrapper = self.next(self.logical);
         self.parent().splice(index, 1); // remove element from parent
         self.logical = 'AND'; // default logical if first element
         self.setParent(wrapper); // now, parent is wrapper
         wrapper.push(self); // append element to wrapper
-        
+
         return wrapper;
     }
-    
+
     function next(logical){
         var self = this;
         if(!self.parent()) return;
-        
+
         var index = self.parent().indexOf(self);
         var q = this.newQuery(logical);
         q.setParent(self.parent());
-        
+
         self.parent().splice(index+1,0,q);
         return q;
     }
-    
+
     function remove(){
         var self = this;
         if(!self.parent()) return;
-        
+
         // don't remove last root element, just reset field
         if(!self.parent().parent() && self.parent().length===1) return self.reset();
-        
+
         // if removing last child of element, remove also element
         if(self.parent().length===1) return self.parent().remove();
-        
+
         var index = self.parent().indexOf(self);
         self.parent().splice(index,1);
         self = null;
     }
-    
+
     function reset(){
         var q = this;
         if(q.fields.length) { // default field is first when there are some
@@ -5573,42 +5595,42 @@ angular.module('neQuery',['neLocal','neObject'])
         }
         q.value = null;
     }
-    
+
     function clear(){
         this.splice(0, this.length); // clear array
         this.setDirty(false);
         return this;
     }
-    
+
     function isEmpty(builtQuery){
         builtQuery = builtQuery || this.build();
         return this.isQueryEmpty(builtQuery) && this.isSortEmpty(builtQuery);
     }
-    
+
     function isQueryEmpty(builtQuery){
         builtQuery = builtQuery || this.build();
         var keysLength = Object.keys(builtQuery).length;
         return keysLength === 0 || (keysLength === 1 && builtQuery.hasOwnProperty('$sort'));
     }
-    
+
     function isSortEmpty(builtQuery){
         builtQuery = builtQuery || this.build();
         return Object.keys(builtQuery.$sort||{}).length === 0;
     }
-    
+
     function setDirty(isDirty){
         this.$dirty = isDirty = false ? false : true;
         this.$touched = isDirty = false ? false : true;
         return this;
     }
-    
+
     function isDirty(){
         return this.$dirty;
     }
-    
+
     function setFieldByName(fieldName, resetPrevField){
         if(resetPrevField) delete this.field;
-        
+
         if(fieldName){
             var fieldNameLower = fieldName.toLowerCase();
             for(var i=0;i<this.fields.length;i++){
@@ -5624,7 +5646,19 @@ angular.module('neQuery',['neLocal','neObject'])
         this.fieldName = fieldName;
         this.field = { key:fieldName };
     }
-    
+
+    function setValueByNameAndField() {
+        if(this.field.suggestions) {
+            var self = this;
+            this.field.suggestions("", function(values) {
+              var found = values.filter(function(value) {return value.key === self.value});
+              if(found.length) {
+                  self.suggestion = found[0].name;
+              }
+            });
+        }
+    }
+
     function setField(field, fieldName){
         // field type changed, reset value
         if(this.type.name !== field.type){
@@ -5636,23 +5670,23 @@ angular.module('neQuery',['neLocal','neObject'])
         var prevField = this.field;
         this.field = angular.copy(field||{});
         this.fieldName = fieldName || this.field.name;
-        
+
         // set default operator, if field has operatorIndex
         this.operator = this.type.operators[ this.field.operatorIndex||0 ];
         if(field.onSet) field.onSet(this, prevField);
     }
-        
+
     function setOperator(operator){
         if(this.type.templates && this.type.templates[this.operator] !== this.type.templates[operator]) this.value = null;
         this.operator = operator;
     }
-        
+
     function setType(type){
         this.type = types[ type ];
         this.operator = this.type.operators[0];
         this.value = null; // clear value because of operator changed
     }
-    
+
     function addSort(index){
         var s = {};
         if(this.fields.length){
@@ -5664,16 +5698,16 @@ angular.module('neQuery',['neLocal','neObject'])
         if(!isNaN(index)) this.sortBy.splice(index+1,0,s);
         else this.sortBy.push(s);
     }
-    
+
     function removeSort(index){
         this.sortBy.splice((!isNaN(index) ? index : this.sortBy.length-1),1);
     }
-    
+
     function toggleSortDirection(index){
         index = index || 0;
         this.sortBy[index].direction = this.sortBy[index].direction===1 ? -1 : 1;
     }
-    
+
     function setSortByName(fieldName, index){
         index = index || 0;
         if(fieldName){
@@ -5690,39 +5724,39 @@ angular.module('neQuery',['neLocal','neObject'])
         }
         this.sortBy[index].fieldName = fieldName;
         this.sortBy[index].key = fieldName;
-        return this.sortBy[index]; 
+        return this.sortBy[index];
     }
-    
+
     function setSortField(field, index){
         index = index || 0;
         this.sortBy[index].fieldName = field.name;
         this.sortBy[index].name = field.name;
         this.sortBy[index].key = field.key;
     }
-    
+
     function filterByName(fieldName, currentFieldName){
         var result = [], fields = this, fieldNameLower = (fieldName || '').toLowerCase();
         if(!fieldName || fieldName===currentFieldName) return fields;
-        
+
         for(var i=0;i<fields.length;i++){
             if(fields[i].nameLower && fields[i].nameLower.match( new RegExp('.*' +fieldNameLower+ '.*')))
                 result.push(fields[i]);
         }
         return result;
     }
-    
+
     // field behaviour usage: behaviour:'keyValueArray',
     // or behaviour:{ keyValueArray:{ prefix:'variants.', idKey:'id', valueKey:'value' } }
-    
+
     var fieldBehaviours = {
         keyValueArray: function(opts){
             var field = this;
             var propName = field.field;
             var keyPrefix = opts.prefix || opts.keyPrefix || '';
             var idKey = opts.key || opts.idKey;
-            var valueKey = opts.value || opts.valueKey;            
+            var valueKey = opts.value || opts.valueKey;
             if(!idKey || !valueKey) throw new Error('neQuery: Cannot set field behaviour, "idKey" or "valueKey" not defined');
-            
+
             return {
                 match: new RegExp(propName+'.*'),
                 build:function(key, expression, query){
@@ -5748,14 +5782,14 @@ angular.module('neQuery',['neLocal','neObject'])
                             ]
                         };
                     }
-                    
+
                     return merged;
                 },
                 parse: function(key, value, parentLogical){
                     // $elemMatch:{ id:'asdasd', value:'asdasd' }
                     if(value.$elemMatch){
                         var fieldName = key + '.' + value.$elemMatch[ idKey ];
-                        
+
                         return {
                             key: fieldName.replace(keyPrefix,''),
                             value: value.$elemMatch[ valueKey ]
@@ -5778,13 +5812,13 @@ angular.module('neQuery',['neLocal','neObject'])
             };
         }
     };
-    
+
     function Query(name, fields){ // Query(opts)
         var opts = {};
         if(arguments.length===1){
             if(Array.isArray(arguments[0])){
                 fields = arguments[0];
-                name = null;    
+                name = null;
             }
             else if(angular.isObject(arguments[0])) {
                 opts = arguments[0];
@@ -5795,7 +5829,7 @@ angular.module('neQuery',['neLocal','neObject'])
 
         fields = fields || [];
         for(var i=0;i<fields.length;i++){
-            fields[i].key = fields[i].key || fields[i].field || fields[i].property; 
+            fields[i].key = fields[i].key || fields[i].field || fields[i].property;
             fields[i].name = local.translate(fields[i].name || fields[i].key);
             fields[i].nameLower = (fields[i].name || '').toLowerCase();
 
@@ -5822,25 +5856,25 @@ angular.module('neQuery',['neLocal','neObject'])
 
             // config can disable some operators
             fields[i].allowedOperatorIndexes = fields[i].allowedOperatorIndexes;
-            
+
             // if operator is set, disable changing operator
             if(fields[i].operatorIndex >= 0) fields[i].disableOperator = true;
             fields[i].operatorIndex = fields[i].operatorIndex || fields[i].defaultOperatorIndex;
 
             // set list template if values are set, but template not
             if(fields[i].values && !fields[i].template) fields[i].template = templates.list;
-            
+
             // config can define emptyValues - values which can be valid but considered as empty, e.g. empty string, zero, etc...
             fields[i].emptyValues = fields[i].emptyValues || fields[i].ignoreValues;
             fields[i].isEmptyValue = fields[i].isEmptyValue || function(value){
                 if(value===null || value===undefined) return true;
                 return (this.emptyValues||this.type.emptyValues) ? (this.emptyValues||this.type.emptyValues).indexOf(value) > -1 : false;
             };
-            
+
             // wrap load suggestions method
             fields[i].loadSuggestions = fields[i].loadSuggestions || fields[i].getSuggestions || fields[i].suggestions;
             fields[i].onlySuggestedValues = fields[i].onlySuggestedValues;
-            
+
             if(fields[i].loadSuggestions) {
                 fields[i].resetOnFieldChange = true;
                 fields[i].onSet = fields[i].onSet || function(query, prevField){
@@ -5857,7 +5891,11 @@ angular.module('neQuery',['neLocal','neObject'])
                     return object.debounce(function(query, searchText){
                         searchText = searchText || '';
                         if(searchText.length >= minLength) field.loadSuggestions(searchText, function(values){
-                            query.suggestions = values;
+                            query.suggestions = values.map(function(value) {
+                              return {
+                                key: value.key || value,
+                                name: value.name || value.key || value};
+                            });;
                         });
                     }, field.suggestionDebounce >= 0 ? field.suggestionDebounce : 350);
                 })(fields[i]);
@@ -5868,19 +5906,19 @@ angular.module('neQuery',['neLocal','neObject'])
         var q = newQuery.call({ fields:fields, types:Object.keys(types) },'AND'); // default logical is AND
         q.name = name;
         q.onlyPredefinedFields = opts.onlyPredefinedFields;
-        
+
         q.append('AND');
-        
+
         return q;
     }
-    
+
     Query.templates = templates;
     Query.fieldBehaviours = fieldBehaviours;
-    
+
     return Query;
 }])
 .factory('neQueryTests', ['NeQuery','neObject', function(Query, object){
-    
+
     return function(){
 
         var q = new Query();
@@ -5907,144 +5945,144 @@ angular.module('neQuery',['neLocal','neObject'])
          */
 
         // or[ and[1,2], or[1,2], and[1,2] ]
-        testQuery('or[ and[1,2], or[1,2], and[1,2] ]', { 
+        testQuery('or[ and[1,2], or[1,2], and[1,2] ]', {
             $and:[
-                { 
+                {
                     $or:[
-                        { field1_or1: 'value1_or1' }, 
-                        { field2_or1: 'value2_or1' } 
+                        { field1_or1: 'value1_or1' },
+                        { field2_or1: 'value2_or1' }
                     ]
                 },
-                { 
+                {
                     $or:[
-                        { field1_or2: 'value1_or2' }, 
-                        { field2_or2: 'value2_or2' } 
+                        { field1_or2: 'value1_or2' },
+                        { field2_or2: 'value2_or2' }
                     ]
                 }
             ]
         });
 
         // or[ or[1,2], and[1,2], or[1,2] ]
-        testQuery('or[ or[1,2], and[1,2], or[1,2] ]', { 
+        testQuery('or[ or[1,2], and[1,2], or[1,2] ]', {
             $or:[
-                { 
+                {
                     $or:[
-                        { field1_or1: 'value1_or1' }, 
-                        { field2_or1: 'value2_or1' } 
+                        { field1_or1: 'value1_or1' },
+                        { field2_or1: 'value2_or1' }
                     ]
                 },
-                { 
+                {
                     $and:[
-                        { field1_and1: 'value1_and1' }, 
-                        { field2_and1: 'value2_and1' } 
+                        { field1_and1: 'value1_and1' },
+                        { field2_and1: 'value2_and1' }
                     ]
                 },
-                { 
+                {
                     $or:[
-                        { field1_or2: 'value1_or2' }, 
-                        { field2_or2: 'value2_or2' } 
+                        { field1_or2: 'value1_or2' },
+                        { field2_or2: 'value2_or2' }
                     ]
                 }
             ]
-        },{ 
+        },{
             $or:[
-                { 
+                {
                     $or:[
-                        { field1_or1: 'value1_or1' }, 
-                        { field2_or1: 'value2_or1' } 
+                        { field1_or1: 'value1_or1' },
+                        { field2_or1: 'value2_or1' }
                     ]
                 },
-                { 
-                    field1_and1: 'value1_and1', 
+                {
+                    field1_and1: 'value1_and1',
                     field2_and1: 'value2_and1'
                 },
-                { 
+                {
                     $or:[
-                        { field1_or2: 'value1_or2' }, 
-                        { field2_or2: 'value2_or2' } 
+                        { field1_or2: 'value1_or2' },
+                        { field2_or2: 'value2_or2' }
                     ]
                 }
             ]
         });
 
         // and[ or[1,2], and[1,2], or[1,2] ]
-        testQuery('and[ or[1,2], and[1,2], or[1,2] ]', { 
+        testQuery('and[ or[1,2], and[1,2], or[1,2] ]', {
             $and:[
-                { 
+                {
                     $or:[
-                        { field1_or1: 'value1_or1' }, 
-                        { field2_or1: 'value2_or1' } 
+                        { field1_or1: 'value1_or1' },
+                        { field2_or1: 'value2_or1' }
                     ]
                 },
-                { 
+                {
                     $and:[
-                        { field1_and1: 'value1_and1' }, 
-                        { field2_and1: 'value2_and1' } 
+                        { field1_and1: 'value1_and1' },
+                        { field2_and1: 'value2_and1' }
                     ]
                 },
-                { 
+                {
                     $or:[
-                        { field1_or2: 'value1_or2' }, 
-                        { field2_or2: 'value2_or2' } 
+                        { field1_or2: 'value1_or2' },
+                        { field2_or2: 'value2_or2' }
                     ]
                 }
             ]
-        },{ 
+        },{
             $and:[
-                { 
+                {
                     $or:[
-                        { field1_or1: 'value1_or1' }, 
-                        { field2_or1: 'value2_or1' } 
+                        { field1_or1: 'value1_or1' },
+                        { field2_or1: 'value2_or1' }
                     ]
                 },
-                { 
-                    field1_and1: 'value1_and1', 
+                {
+                    field1_and1: 'value1_and1',
                     field2_and1: 'value2_and1'
                 },
-                { 
+                {
                     $or:[
-                        { field1_or2: 'value1_or2' }, 
-                        { field2_or2: 'value2_or2' } 
+                        { field1_or2: 'value1_or2' },
+                        { field2_or2: 'value2_or2' }
                     ]
                 }
             ]
         });
 
         // and[ or[1,2], or[1,2] ]
-        testQuery('and[ or[1,2], or[1,2] ]', { 
+        testQuery('and[ or[1,2], or[1,2] ]', {
             $and:[
-                { 
+                {
                     $or:[
-                        { field1_or1: 'value1_or1' }, 
-                        { field2_or1: 'value2_or1' } 
+                        { field1_or1: 'value1_or1' },
+                        { field2_or1: 'value2_or1' }
                     ]
                 },
-                { 
+                {
                     $or:[
-                        { field1_or2: 'value1_or2' }, 
-                        { field2_or2: 'value2_or2' } 
+                        { field1_or2: 'value1_or2' },
+                        { field2_or2: 'value2_or2' }
                     ]
                 }
             ]
         });
 
         // or[ and[1,2], and[1,2] ]
-        testQuery('or[ and[1,2], and[1,2] ]', { 
+        testQuery('or[ and[1,2], and[1,2] ]', {
             $or:[
-                { 
+                {
                     $and:[
-                        { field1_and1: 'value1_and1' }, 
-                        { field2_and1: 'value2_and1' } 
+                        { field1_and1: 'value1_and1' },
+                        { field2_and1: 'value2_and1' }
                     ]
                 },
-                { 
+                {
                     $and:[
-                        { field1_and2: 'value1_and2' }, 
-                        { field2_and2: 'value2_and2' } 
+                        { field1_and2: 'value1_and2' },
+                        { field2_and2: 'value2_and2' }
                     ]
                 }
             ]
-        },{ 
+        },{
             $or:[
                 { field1_and1: 'value1_and1', field2_and1: 'value2_and1' },
                 { field1_and2: 'value1_and2', field2_and2: 'value2_and2' }
@@ -6056,66 +6094,67 @@ angular.module('neQuery',['neLocal','neObject'])
          */
 
         // or[ or[1,range], and[range,1,2, or[1,2] ], or[range,range] ]
-        testQuery('or[ or[1,range], and[range,1,2], or[range,range] ]', { 
+        testQuery('or[ or[1,range], and[range,1,2], or[range,range] ]', {
             $or:[
-                { 
+                {
                     $or:[
-                        { field1_or1: 'value1_or1' }, 
-                        { field2_or1: { $gt:1, $lt:100 } } 
+                        { field1_or1: 'value1_or1' },
+                        { field2_or1: { $gt:1, $lt:100 } }
                     ]
                 },
-                { 
+                {
                     $and:[
-                        { field1_and1: { $gt:1, $lt:100 } }, 
-                        { field1_and1: 'value1_and1' }, 
+                        { field1_and1: { $gt:1, $lt:100 } },
+                        { field1_and1: 'value1_and1' },
                         { field2_and1: 'value2_and1' },
-                        { 
+                        {
                             $or:[
-                                { field1_and1_or: { $gte:1, $lte:100 } }, 
-                                { field2_and1_or: 'value2_and1_or' } 
+                                { field1_and1_or: { $gte:1, $lte:100 } },
+                                { field2_and1_or: 'value2_and1_or' }
                             ]
                         }
                     ]
                 },
-                { 
+                {
                     $or:[
-                        { field1_or2: { $gte:1, $lte:100 } }, 
-                        { field2_or2: { $gte:1, $lte:100 } } 
+                        { field1_or2: { $gte:1, $lte:100 } },
+                        { field2_or2: { $gte:1, $lte:100 } }
                     ]
                 }
             ]
-        },{ 
+        },{
             $or:[
-                { 
+                {
                     $or:[
-                        { field1_or1: 'value1_or1' }, 
-                        { field2_or1: { $gt:1, $lt:100 } } 
+                        { field1_or1: 'value1_or1' },
+                        { field2_or1: { $gt:1, $lt:100 } }
                     ]
                 },
-                { 
+                {
                     $and:[
                         { field1_and1: { $gt:1 } },
                         { field1_and1: { $lt:100 } },
-                        { field1_and1: 'value1_and1' }, 
+                        { field1_and1: 'value1_and1' },
                         { field2_and1: 'value2_and1' },
-                        { 
+                        {
                             $or:[
-                                { field1_and1_or: { $gte:1, $lte:100 } }, 
-                                { field2_and1_or: 'value2_and1_or' } 
+                                { field1_and1_or: { $gte:1, $lte:100 } },
+                                { field2_and1_or: 'value2_and1_or' }
                             ]
                         }
                     ]
                 },
-                { 
+                {
                     $or:[
-                        { field1_or2: { $gte:1, $lte:100 } }, 
-                        { field2_or2: { $gte:1, $lte:100 } } 
+                        { field1_or2: { $gte:1, $lte:100 } },
+                        { field2_or2: { $gte:1, $lte:100 } }
                     ]
                 }
             ]
         });
     };
 }]);
+
 /**
  *                                                  NE REST
  * ***************************************************************************************************************************
@@ -7366,7 +7405,7 @@ angular.module('neTree',['neObject'])
         
         // defaults
         this.silentMode = false;
-        this.$query = angular.merge({}, { $page:this.$page, $limit:this.$limit }, this.defaultQuery);
+        this.$query = object.extend('data', {}, { $page:this.$page, $limit:this.$limit }, this.defaultQuery);
         this.items = [];
         this.itemTemplate = settings.itemTemplate || settings.include || 'neTree/item.html';
         this.disabled = true; // default grid state is disabled
@@ -7698,8 +7737,8 @@ angular.module('neTree',['neObject'])
             if(!tree.interceptLoad || (tree.interceptLoad && tree.interceptLoad((parent||tree).$query, parent)!==false)){
                 
                 var query = parent ? (parent.$query || {}) : tree.$query || {};
-                query = angular.merge({}, { $page:1, $limit:(tree.$limit || tree.defaultLimit) }, tree.defaultQuery, query, tree.getChildrenQuery(parent));
-                if(query.$sort) query.$sort = angular.merge({}, tree.defaultSort ,query.$sort);
+                query = object.extend('data', {}, { $page:1, $limit:(tree.$limit || tree.defaultLimit) }, tree.defaultQuery, query, tree.getChildrenQuery(parent));
+                if(query.$sort) query.$sort = object.extend('data', {}, tree.defaultSort ,query.$sort);
                 
                 if(parent) parent.$query = query;
                 else delete query.$limit;
@@ -7761,7 +7800,7 @@ angular.module('neTree',['neObject'])
         
         parent = parent || tree;
         var tree = this;
-        parent.$query = angular.merge({}, tree.defaultQuery || {}, newQuery || {});
+        parent.$query = object.extend('data', {}, tree.defaultQuery || {}, newQuery || {});
         tree.setPage(parent, parent.$query.$page || 'first', cb, newQuery);
         return tree;
     }
@@ -7830,11 +7869,11 @@ angular.module('neTree',['neObject'])
         if(!parent.$limit || parent.$limit < 0) parent.$limit = tree.defaultLimit;
         else if(parent.$limit > tree.maxLimit) parent.$limit = tree.maxLimit;
 
-        var query = angular.merge({}, newQuery, { $limit:parent.$limit, $sort:{}, $page:parent.$page });
+        var query = object.extend('data', {}, newQuery, { $limit:parent.$limit, $sort:{}, $page:parent.$page });
 
         // merge sort with defaultSort
         if(parent.$sort) query.$sort = parent.$sort;
-        query.$sort = angular.merge({}, tree.defaultSort || {}, parent.$sort || {});
+        query.$sort = object.extend('data', {}, tree.defaultSort || {}, parent.$sort || {});
         if(Object.keys(query.$sort).length===0) delete query.$sort;
 
         if(parent.$query){
@@ -7842,7 +7881,7 @@ angular.module('neTree',['neObject'])
             delete parent.$query.$sort;
             delete parent.$query.$limit;
         }
-        parent.$query = angular.merge(query, parent.$query || {});
+        parent.$query = object.extend('data', query, parent.$query || {});
         if(tree.onQuery && !tree.silentMode) tree.onQuery(parent.$query, parent);
 
         return tree;
@@ -7881,7 +7920,7 @@ angular.module('neTree',['neObject'])
         tree.maintainReferences(parent, item);
         
         tree.getResourceMethod('create', item, parent)(item, function(newItem){
-            item = angular.merge(item, newItem);
+            item = object.extend('data', item, newItem);
             
             if(appendChild && parent) { // add childId if childReferenceKey
                 tree.maintainReferences(parent, item);
@@ -7916,7 +7955,7 @@ angular.module('neTree',['neObject'])
     
     function updateItem(item, cb){
         this.getResourceMethod('update', item)(item, function(data){
-            item = angular.merge(item, data);
+            item = object.extend('data', item, data);
             if(cb) cb(item);
         });
         return this;

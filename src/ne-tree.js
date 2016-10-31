@@ -223,7 +223,7 @@ angular.module('neTree',['neObject'])
         
         // defaults
         this.silentMode = false;
-        this.$query = angular.merge({}, { $page:this.$page, $limit:this.$limit }, this.defaultQuery);
+        this.$query = object.extend('data', {}, { $page:this.$page, $limit:this.$limit }, this.defaultQuery);
         this.items = [];
         this.itemTemplate = settings.itemTemplate || settings.include || 'neTree/item.html';
         this.disabled = true; // default grid state is disabled
@@ -555,8 +555,8 @@ angular.module('neTree',['neObject'])
             if(!tree.interceptLoad || (tree.interceptLoad && tree.interceptLoad((parent||tree).$query, parent)!==false)){
                 
                 var query = parent ? (parent.$query || {}) : tree.$query || {};
-                query = angular.merge({}, { $page:1, $limit:(tree.$limit || tree.defaultLimit) }, tree.defaultQuery, query, tree.getChildrenQuery(parent));
-                if(query.$sort) query.$sort = angular.merge({}, tree.defaultSort ,query.$sort);
+                query = object.extend('data', {}, { $page:1, $limit:(tree.$limit || tree.defaultLimit) }, tree.defaultQuery, query, tree.getChildrenQuery(parent));
+                if(query.$sort) query.$sort = object.extend('data', {}, tree.defaultSort ,query.$sort);
                 
                 if(parent) parent.$query = query;
                 else delete query.$limit;
@@ -618,7 +618,7 @@ angular.module('neTree',['neObject'])
         
         parent = parent || tree;
         var tree = this;
-        parent.$query = angular.merge({}, tree.defaultQuery || {}, newQuery || {});
+        parent.$query = object.extend('data', {}, tree.defaultQuery || {}, newQuery || {});
         tree.setPage(parent, parent.$query.$page || 'first', cb, newQuery);
         return tree;
     }
@@ -687,11 +687,11 @@ angular.module('neTree',['neObject'])
         if(!parent.$limit || parent.$limit < 0) parent.$limit = tree.defaultLimit;
         else if(parent.$limit > tree.maxLimit) parent.$limit = tree.maxLimit;
 
-        var query = angular.merge({}, newQuery, { $limit:parent.$limit, $sort:{}, $page:parent.$page });
+        var query = object.extend('data', {}, newQuery, { $limit:parent.$limit, $sort:{}, $page:parent.$page });
 
         // merge sort with defaultSort
         if(parent.$sort) query.$sort = parent.$sort;
-        query.$sort = angular.merge({}, tree.defaultSort || {}, parent.$sort || {});
+        query.$sort = object.extend('data', {}, tree.defaultSort || {}, parent.$sort || {});
         if(Object.keys(query.$sort).length===0) delete query.$sort;
 
         if(parent.$query){
@@ -699,7 +699,7 @@ angular.module('neTree',['neObject'])
             delete parent.$query.$sort;
             delete parent.$query.$limit;
         }
-        parent.$query = angular.merge(query, parent.$query || {});
+        parent.$query = object.extend('data', query, parent.$query || {});
         if(tree.onQuery && !tree.silentMode) tree.onQuery(parent.$query, parent);
 
         return tree;
@@ -738,7 +738,7 @@ angular.module('neTree',['neObject'])
         tree.maintainReferences(parent, item);
         
         tree.getResourceMethod('create', item, parent)(item, function(newItem){
-            item = angular.merge(item, newItem);
+            item = object.extend('data', item, newItem);
             
             if(appendChild && parent) { // add childId if childReferenceKey
                 tree.maintainReferences(parent, item);
@@ -773,7 +773,7 @@ angular.module('neTree',['neObject'])
     
     function updateItem(item, cb){
         this.getResourceMethod('update', item)(item, function(data){
-            item = angular.merge(item, data);
+            item = object.extend('data', item, data);
             if(cb) cb(item);
         });
         return this;

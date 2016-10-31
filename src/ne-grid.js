@@ -168,8 +168,8 @@ angular.module('neGrid',['neObject','neLocal'])
         this.pagination = { page: settings.page || this.defaultQuery.$page || 1 };
         this.page = this.pagination.page;
         this.pagesCount = 1;
-        this.query = angular.merge({}, settings.query || {}, { $page:this.page, $limit:this.limit }, this.defaultQuery);
-        this.sort = angular.merge({}, this.defaultSort || {}, settings.sort || {});
+        this.query = object.extend('data', {}, settings.query || {}, { $page:this.page, $limit:this.limit }, this.defaultQuery);
+        this.sort = object.extend('data', {}, this.defaultSort || {}, settings.sort || {});
         this.items = [];
         this.disabled = true; // default grid state is disabled
         
@@ -318,7 +318,7 @@ angular.module('neGrid',['neObject','neLocal'])
     
     function setQuery(newQuery, cb){
         var grid = this;
-        grid.query = angular.merge({}, grid.defaultQuery || {}, newQuery || {});
+        grid.query = object.extend('data', {}, grid.defaultQuery || {}, newQuery || {});
         grid.setPage(grid.query.$page || 'first', cb, newQuery);
         return grid;
     }
@@ -337,17 +337,17 @@ angular.module('neGrid',['neObject','neLocal'])
         if(!grid.limit || grid.limit < 0) grid.limit = grid.defaultLimit;
         else if(grid.limit > grid.maxLimit) grid.limit = grid.maxLimit;
         
-        var query = angular.merge({}, newQuery, { $limit:grid.limit, $sort:{}, $page:grid.page });
+        var query = object.extend('data', {}, newQuery, { $limit:grid.limit, $sort:{}, $page:grid.page });
         
         // merge sort with defaultSort
         if(grid.sort) query.$sort = grid.sort;
-        query.$sort = angular.merge({}, grid.defaultSort || {}, query.$sort || {});
+        query.$sort = object.extend('data', {}, grid.defaultSort || {}, query.$sort || {});
         if(Object.keys(query.$sort).length===0) delete query.$sort;
         
         delete grid.query.$page;
         delete grid.query.$sort;
         delete grid.query.$limit;
-        grid.query = angular.merge(query, grid.query || {});
+        grid.query = object.extend('data', query, grid.query || {});
         
         if(grid.onQuery && !grid.silentMode) grid.onQuery(grid.query);
         
@@ -370,7 +370,7 @@ angular.module('neGrid',['neObject','neLocal'])
         grid.getResourceMethod('update', item)(item, function(data){
             var index = grid.items.indexOf(item);
             var oldItem = angular.copy(item);
-            grid.items[ index ] = angular.extend(grid.items[ index ], data);
+            grid.items[ index ] = object.extend('data', grid.items[ index ], data);
             if(grid.onUpdate) grid.onUpdate(grid.items[ index ], oldItem);
             if(cb) cb(grid.items[ index ]);
         });
@@ -385,7 +385,7 @@ angular.module('neGrid',['neObject','neLocal'])
         
         grid.getResourceMethod('find', item)(idQuery, function(items, pagination){
             var index = grid.items.indexOf(item);
-            grid.items[ index ] = angular.extend(grid.items[ index ], items[0]);
+            grid.items[ index ] = object.extend('data', grid.items[ index ], items[0]);
             if(cb) cb(grid.items[ index ]);
         });
         return grid;
