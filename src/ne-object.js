@@ -33,14 +33,14 @@ angular.module('neObject',[])
             length = arguments.length,
             deep = false;
         // Handle a deep copy situation
-        if ( typeof target === "boolean" ) {
+        if ( typeof target === 'boolean' || target === 'data' ) {
             deep = target;
             target = arguments[1] || {};
             // skip the boolean and the target
             i = 2;
         }
         // Handle case when target is a string or something (possible in deep copy)
-        if ( typeof target !== "object" && typeof target !== "function") {
+        if ( typeof target !== 'object' && typeof target !== 'function') {
             target = {};
         }
         for ( ; i < length; i++ ) {
@@ -72,6 +72,11 @@ angular.module('neObject',[])
                     if ( deep && copy && ( isPlainObject(copy) || (copyIsArray = Array.isArray(copy)) ) ) {
                         if ( copyIsArray ) {
                             copyIsArray = false;
+                            if(deep === 'data') {
+                                // if data mode, do not merge arrays, just copy
+                                target[ name ] = copy.slice(0);
+                                continue;
+                            }
                             clone = src && Array.isArray(src) ? src : [];
                         } else {
                             clone = src && isPlainObject(src) ? src : {};
@@ -169,21 +174,34 @@ angular.module('neObject',[])
         delete obj[keys[keys.length-1]]; // delete last prop
     }
     
-    function sortArray(keyName, dir, array){
+    function sortArray(keyName, dir, array){ // sortArray({ key1:1, key2:-1 }, dir)
+        var keys;
+        
         if(arguments.length===2){
-            array = arguments[1];
-            dir = 1;
+            if(isObject(keyName)) {
+                keys = keyName;
+                array = arguments[1];
+            }
+            else {
+                array = arguments[1];
+                dir = 1;
+            }
+        }
+        else {
+            keys = {};
+            keys[keyName] = dir;
         }
         
-        if(dir==='asc') dir=1;
-        if(dir==='desc') dir=-1;
+        for(var key in keys){
+            if(keys[key]==='asc') keys[key] = 1;
+            if(keys[key]==='desc') keys[key] = -1;
+        }
         
         array.sort(function(a, b) {
-            if (a[keyName] > b[keyName])
-              return dir;
-            if (a[keyName] < b[keyName])
-              return -dir;
-            // a must be equal to b
+            for(var key in keys){
+                if( deepGet(a, key) > deepGet(b, key)) return keys[key];
+                if( deepGet(a, key) < deepGet(b, key)) return -keys[key];
+            }
             return 0;
         });
         
@@ -379,8 +397,9 @@ angular.module('neObject',[])
     return {
         isObject: isObject,
         isArray: isArray,
-        extendReservedInstances: [File, FileList, Blob],
+        extendReservedInstances: [], // [File, FileList, Blob],
         extend: extend,
+        merge: extend,
         setObjValue: deepSet,
         deepSet: deepSet,
         getObjValue: deepGet,
@@ -397,4 +416,5 @@ angular.module('neObject',[])
         removePrefixedProps: removePrefixedProps,
         debounce: debounce
     };
+
 }]);
