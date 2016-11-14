@@ -232,16 +232,9 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
         return str.replace(regexp, withStr);
     }
     
-    function unifyUrlPath(str, onlyLastSlash){
-        if(onlyLastSlash) return str.replace(/\/$/,'');
-        
-        var prefix = '';
-        if(!!str.match(/^http:/)) { prefix = 'http:/'; str = str.substring(6); }
-        if(!!str.match(/^https:/)) { prefix = 'https:/'; str = str.substring(7); }
-        if(!!str.match(/^\/\//)) { prefix = '/'; str = str.substring(1); }
-        
-        str = ('/' + str + '/').replace(/\/\/+/g,'/');
-        return prefix + str.substring(0, str.length - 1);
+    function unifyUrlPath(str){
+        str = str.indexOf('?') > -1 ? str.replace(/([^\/])\?/,'$1/?') : str +'/'; // add last slash to ensure server will know this is resource path, not static file
+        return str.replace(/([^:])(\/){2,}/g,'$1/'); // remove double slashes in path
     }
                               
     function isAbsoluteUrl(str){
@@ -261,8 +254,8 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
     
     function urlBuilder(baseUrl, urlTemplate, params, cmdName) {
         var resource = this;
-        urlTemplate = unifyUrlPath(urlTemplate || '', true);
-        var url = isAbsoluteUrl(urlTemplate) ? urlTemplate : (baseUrl + ((urlTemplate[0]==='/' || baseUrl==='') ? '' : '/') + urlTemplate);
+        urlTemplate = unifyUrlPath(urlTemplate || '');
+        var url = isAbsoluteUrl(urlTemplate) ? urlTemplate : (baseUrl + '/' + urlTemplate);
         var urlParams = resource.options.commands[cmdName].urlParams;
         var value, paramValue;
         
@@ -273,8 +266,7 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
             url = replaceStringAll(url,'{' +urlParams[i]+ '}', stringifyWithoutQuotes(value));
         }
         
-        url = unifyUrlPath(url, true);
-        return url.indexOf('?') > -1 ? url.replace(/([^\/])\?/,'$1/?') : url +'/'; // add last slash to ensure server will know this is resource path, not static file
+        return unifyUrlPath(url);
     }                         
                                 
     function queryStringBuilder(query, cmdName) {
@@ -517,7 +509,7 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
         var args = [ {}, Resource.defaults ];
         for(var i=0;i<arguments.length;i++) args.push(arguments[i]);
         var opts = angular.merge.apply(angular, args);
-        opts.baseUrl = unifyUrlPath(opts.baseUrl, true);
+        opts.baseUrl = unifyUrlPath(opts.baseUrl);
         
         var resource = this;
         resource.options = opts;
