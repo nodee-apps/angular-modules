@@ -6412,7 +6412,7 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
     function urlBuilder(baseUrl, urlTemplate, params, cmdName) {
         var resource = this;
         urlTemplate = unifyUrlPath(urlTemplate || '');
-        var url = isAbsoluteUrl(urlTemplate) ? urlTemplate : (baseUrl + '/' + urlTemplate);
+        var url = isAbsoluteUrl(urlTemplate) ? urlTemplate : (baseUrl + ((urlTemplate[0]==='/' || baseUrl==='') ? '' : '/') + urlTemplate);
         var urlParams = resource.options.commands[cmdName].urlParams;
         var value, paramValue;
         
