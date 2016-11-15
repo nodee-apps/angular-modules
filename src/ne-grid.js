@@ -275,7 +275,7 @@ angular.module('neGrid',['neObject','neLocal'])
         return this.setSort(sort);
     }
     
-    function load(cb){
+    function load(cb, errCb){
         var grid = this;
         if(!grid.interceptLoad || (grid.interceptLoad && grid.interceptLoad(grid.query)!==false)){            
             grid.disabled = true;
@@ -284,7 +284,7 @@ angular.module('neGrid',['neObject','neLocal'])
                 grid.fillItems(items, pagination);
                 if(cb) cb();
                 grid.disabled = false;
-            });
+            }, errCb);
         }
         return grid;
     }
@@ -354,18 +354,18 @@ angular.module('neGrid',['neObject','neLocal'])
         return grid;
     }
     
-    function createItem(item,cb){
+    function createItem(item, cb, errCb){
         var grid = this;
         
         grid.getResourceMethod('create', item)(item, function(data){
             grid.setPage('first', cb);
             if(typeof grid.onCreate === 'function') grid.onCreate(item);
             if(!grid.autoLoad) grid.load(cb);
-        });
+        }, errCb);
         return grid;
     }
     
-    function updateItem(item, cb){
+    function updateItem(item, cb, errCb){
         var grid = this;
         grid.getResourceMethod('update', item)(item, function(data){
             var index = grid.items.indexOf(item);
@@ -373,11 +373,11 @@ angular.module('neGrid',['neObject','neLocal'])
             grid.items[ index ] = object.extend('data', grid.items[ index ], data);
             if(grid.onUpdate) grid.onUpdate(grid.items[ index ], oldItem);
             if(cb) cb(grid.items[ index ]);
-        });
+        }, errCb);
         return grid;
     }
     
-    function refreshItem(item, cb){
+    function refreshItem(item, cb, errCb){
         var grid = this;
         var idKey = grid.idKey;
         var idQuery = {};
@@ -387,17 +387,17 @@ angular.module('neGrid',['neObject','neLocal'])
             var index = grid.items.indexOf(item);
             grid.items[ index ] = object.extend('data', grid.items[ index ], items[0]);
             if(cb) cb(grid.items[ index ]);
-        });
+        }, errCb);
         return grid;
     }
     
-    function removeItem(item, cb){
+    function removeItem(item, cb, errCb){
         var grid = this;
         grid.getResourceMethod('remove',item)(item, function(data){
             grid.items.splice(grid.items.indexOf(item), 1);
             if(grid.onRemove) grid.onRemove(item);
             if(cb) cb(item);
-        });
+        }, errCb);
         return grid;
     }
     
