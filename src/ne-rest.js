@@ -387,7 +387,7 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
             
             var httpOpts = response.config,
                 cmdOpts = opts.commands[cmdName],
-                data = applyTransformators(response.data, cmdOpts.transformResponse),
+                data = applyTransformators(copyData(response.data), cmdOpts.transformResponse),
                 status = response.status,
                 headers = response.headers,
                 isList = cmdOpts.isList,
@@ -411,7 +411,7 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
         return function(response){
             var httpOpts = response.config,
                 cmdOpts = opts.commands[cmdName],
-                data = applyTransformators(response.data, cmdOpts.transformResponse),
+                data = applyTransformators(copyData(response.data), cmdOpts.transformResponse),
                 status = response.status,
                 headers = response.headers,
                 responseErrorCbs = errorCbs.concat([ 
@@ -603,6 +603,10 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
         
         if(query.$page === 0) throw new Error('NeRestResource: query.$page is equal to zero, must be greater');
         
+        // do not modify source objects, make a copy than modify
+        query = copyData(query);
+        if(data) data = copyData(data);
+        
         // replace default pagination props by custom if defined in query
         query = replacePaginationProps(query, pageKey, limitKey, sortKey, object);
         if(data) data = replacePaginationProps(data, pageKey, limitKey, sortKey, object);
@@ -646,20 +650,24 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
     }
     
     
+    function copyData(data){
+        var copy = data;
+        if(Object.prototype.toString.call(data) === '[object Object]') copy = object.extend(true, {}, data);
+        if(Array.isArray(data)) copy = object.extend(true, [], data);
+        return copy;
+    }
+                                
     /*
      * REQ/RES TRANSFORMATORS
      */
     
     function applyTransformators(data, transforms){
         transforms = transforms || {};
-        var copy = data;
-        if(Object.prototype.toString.call(data) === '[object Object]') copy = object.extend(true, {}, data);
-        if(Array.isArray(data)) copy = object.extend(true, [], data);
         
         for(var id in transforms){
-            if(Resource.dataTransformators[ id ]) Resource.dataTransformators[ id ]( copy, transforms[id] );
+            if(Resource.dataTransformators[ id ]) Resource.dataTransformators[ id ]( data, transforms[id] );
         }
-        return copy;
+        return data;
     }
     
     return Resource;
