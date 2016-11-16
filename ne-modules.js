@@ -6393,10 +6393,6 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
         str = str.indexOf('?') > -1 ? str.replace(/([^\/])\?/,'$1/?') : str +'/'; // add last slash to ensure server will know this is resource path, not static file
         return str.replace(/([^:])(\/){2,}/g,'$1/'); // remove double slashes in path
     }
-                              
-    function isAbsoluteUrl(str){
-        return !!str.match(/^http:/) || !!str.match(/^https:/) || !!str.match(/^\/\//);
-    }
     
     function getUrlParams(urlTemplate){
         var urlParams = (urlTemplate || '').match(/\{([^\{\}]+)/g) || [];
@@ -6412,7 +6408,7 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
     function urlBuilder(baseUrl, urlTemplate, params, cmdName) {
         var resource = this;
         urlTemplate = unifyUrlPath(urlTemplate || '');
-        var url = isAbsoluteUrl(urlTemplate) ? urlTemplate : (baseUrl + ((urlTemplate[0]==='/' || baseUrl==='') ? '' : '/') + urlTemplate);
+        var url = baseUrl ? baseUrl + '/' + urlTemplate : urlTemplate;
         var urlParams = resource.options.commands[cmdName].urlParams;
         var value, paramValue;
         
