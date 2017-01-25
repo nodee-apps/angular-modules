@@ -4088,15 +4088,16 @@ angular.module('neNotifications',['neLoading'])
     $templateCache.put('neNotifications/container.html',
                        '<div class="notification-container" ng-controller="NeNotificationsCtrl">'+
                        '    <div ng-show="true" class="ng-hide">'+
-                       '        <div ng-repeat="n in notifications" class="alert alert-{{n.type}}" ng-click="n.fixed=true;n.postpone()" ng-mouseenter="n.postpone()" ng-mouseleave="n.postpone(1000)">'+
+                       '        <div ng-repeat="n in notifications" class="alert alert-{{n.type}}" ng-class="{expanded:n.expanded}" ng-click="n.fixed=true;n.postpone()" ng-mouseenter="n.postpone()" ng-mouseleave="n.postpone(1000)">'+
                        '            <i class="alert-pin fa fa-thumb-tack" ng-if="n.fixed"></i>'+
+                       '            <i class="alert-expand fa" ng-class="{\'fa-expand\':!n.expanded,\'fa-compress\':n.expanded}" ng-click="n.expanded=!n.expanded;n.fixed=true"></i>'+
                        '            <table style="width:100%;word-wrap:break-word" class="table-fixed">'+
                        '                <tr>'+
-                       '                    <td style="width:15%">'+
+                       '                    <td style="width:40px">'+
                        '                        <i class="{{n.icon}}"></i>'+
                        '                    </td>'+
                        '                    <td style="padding:0px 5px">'+
-                       '                        <div ng-if="!n.include" style="overflow:auto;max-height:200px">'+
+                       '                        <div class="notification-content" ng-if="!n.include">'+
                        '                            <strong ng-if="n.title"><span ne-bind-html="{{n.title|translate}}"></span><br></strong>'+
                        '                            <span ne-bind-html="{{n.text|translate}}"></span>'+
                        '                        </div>'+
@@ -4111,7 +4112,7 @@ angular.module('neNotifications',['neLoading'])
                        '        <div class="alert alert-default" ng-show="loading" ng-controller="NeLoadingCtrl">'+
                        '            <table style="width:100%">'+
                        '                <tr>'+
-                       '                    <td style="width:15%">'+
+                       '                    <td style="width:40px">'+
                        '                        <i class="fa fa-fw fa-spinner fa-spin fa-2x"></i>'+
                        '                    </td>'+
                        '                    <td style="padding:0px 5px">'+
