@@ -86,7 +86,7 @@ angular.module('neQuery',['neLocal','neObject'])
                        '                <span class="class="nowrap"">{{query.operator | translate}}&nbsp;</span>'+
                        '            </button>'+
                        '            <ul class="dropdown-menu" style="min-width:210px;overflow:auto">'+
-                       '                <li ng-if="!query.field.disableType" class="text-center">'+
+                       '                <li ng-if="!query.field.disableType" class="text-center" style="padding-top:4px">'+
                        '                    <div class="btn-group btngroup-xs">'+
                        '                        <button class="btn btn-default btn-xs" ng-class="{\'btn-success\':(query.type.name===type)}" style="padding:2px;" uib-tooltip="{{\'qtype_\'+type | translate}}" ng-repeat="type in query.types" ng-click="query.setType(type);$event.stopPropagation();">'+
                        '                        {{\'qtype_short_\'+type | translate}}'+
@@ -190,6 +190,11 @@ angular.module('neQuery',['neLocal','neObject'])
                        '           ng-model="query.suggestion" '+
                        '           ng-change="query.field.onlySuggestedValues ? query.value=null : query.value=query.suggestion;query.field.createSuggestions(query, query.suggestion);onChange()">'+
                        '    <ul ng-if="query.suggestions.length" class="dropdown-menu" style="max-height:220px;overflow:auto">'+
+                       '        <li ng-if="query.field.pagination" class="text-center" style="padding-top:4px">'+
+                       '            <button class="btn btn-xs btn-default" ng-disabled="!query.pagination.prev" ng-click="$event.stopPropagation();query.page=(query.page||1)-1;query.field.createSuggestions(query, query.suggestion)"><i class="fa fa-fw fa-backward"></i></button>'+
+                       '            <button class="btn btn-xs btn-default" ng-disabled="!query.pagination.next" ng-click="$event.stopPropagation();query.page=(query.page||1)+1;query.field.createSuggestions(query, query.suggestion)"><i class="fa fa-fw fa-forward"></i></button>'+
+                       '        </li>'+
+                       '        <li ng-if="query.field.pagination" class="divider"></li>'+
                        '        <li ng-repeat="value in query.suggestions" ng-class="{\'active\':(value===query.value)}">'+
                        '          <a href="" ng-click="query.value=value.key;query.suggestion=value.name;onChange()">'+
                        '		      {{value.name}}'+
@@ -1352,12 +1357,17 @@ angular.module('neQuery',['neLocal','neObject'])
                     var minLength = field.suggestionMinLength || field.suggestionMinSearchLength || 3;
                     return object.debounce(function(query, searchText){
                         searchText = searchText || '';
-                        if(searchText.length >= minLength) field.loadSuggestions(searchText, function(values){
+                        query.page = query.page || field.page || 1;
+                        query.limit = query.limit || field.limit || 10;
+                        if(searchText.length >= minLength) field.loadSuggestions.call(query, searchText, function(values, pagination){
                             query.suggestions = values.map(function(value) {
                               return {
                                 key: value.key || value,
                                 name: value.name || value.key || value};
-                            });;
+                            });
+                            query.pagination = pagination;
+                            query.page = pagination.page || query.page;
+                            query.limit = pagination.limit || query.limit;
                         });
                     }, field.suggestionDebounce >= 0 ? field.suggestionDebounce : 350);
                 })(fields[i]);
