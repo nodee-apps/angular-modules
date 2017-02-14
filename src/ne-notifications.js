@@ -201,6 +201,7 @@ angular.module('neNotifications',['neLoading'])
                        '        <div ng-repeat="n in notifications" class="alert alert-{{n.type}}" ng-class="{expanded:n.expanded}" ng-click="n.fixed=true;n.postpone()" ng-mouseenter="n.postpone()" ng-mouseleave="n.postpone(1000)">'+
                        '            <i class="alert-pin fa fa-thumb-tack" ng-if="n.fixed"></i>'+
                        '            <i class="alert-expand fa" ng-class="{\'fa-expand\':!n.expanded,\'fa-compress\':n.expanded}" ng-click="n.expanded=!n.expanded;n.fixed=true"></i>'+
+                       '            <i class="alert-close fa fa-times" ng-click="n.close()"></i>'+
                        '            <table style="width:100%;word-wrap:break-word" class="table-fixed">'+
                        '                <tr>'+
                        '                    <td style="width:40px">'+
@@ -212,9 +213,6 @@ angular.module('neNotifications',['neLoading'])
                        '                            <span ne-bind-html="{{n.text|translate}}"></span>'+
                        '                        </div>'+
                        '                        <div ng-if="n.include" ng-include="n.include"></div>'+
-                       '                    </td>'+
-                       '                    <td style="width:20px">'+
-                       '                        <a href="" ng-click="n.close()"><i class="fa fa-fw fa-times"></i></a>'+
                        '                    </td>'+
                        '                </tr>'+
                        '            </table>'+
