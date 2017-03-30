@@ -3124,7 +3124,9 @@ angular.module('neGrid',['neObject','neLocal'])
         var grid = this;
         if(!grid.interceptLoad || (grid.interceptLoad && grid.interceptLoad(grid.query)!==false)){            
             grid.disabled = true;
-            grid.getResourceMethod('find')(grid.query, function(items, pagination){
+            grid.lastFindReqId = grid.getResourceMethod('find')(grid.query, function(items, pagination){
+                if(grid.lastFindReqId && grid.lastFindReqId !== this.requestId) return;
+
                 if(typeof grid.onLoad === 'function') grid.onLoad(items, pagination);
                 grid.fillItems(items, pagination);
                 if(cb) cb();
@@ -4518,6 +4520,14 @@ angular.module('neObject',[])
     function isArray(obj){
         return Array.isArray(obj);
     }
+
+    function s4() {
+      return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
+    }
+
+    function guid() {
+      return s4() + s4() + '-' + s4() + '-' + s4() + '-' + s4() + '-' + s4() + s4() + s4();
+    }
     
     return {
         isObject: isObject,
@@ -4540,7 +4550,8 @@ angular.module('neObject',[])
         fromJson: fromJson,
         fromJSON: fromJson,
         removePrefixedProps: removePrefixedProps,
-        debounce: debounce
+        debounce: debounce,
+        guid: guid
     };
 
 }]);
@@ -4618,7 +4629,7 @@ angular.module('neQuery',['neLocal','neObject'])
                        '                <span class="nowrap" ng-if="query.fieldName">{{query.fieldName}}</span><span class="nowrap" ng-if="!query.fieldName">{{::\'choose field\'|translate}}</span>'+
                        '            </button>'+
                        '            <input ng-if="!query.onlyPredefinedFields" type="text" ng-disabled="disabled" placeholder="{{::\'choose field\'|translate}}" class="input-sm" uib-dropdown-toggle ng-change="query.setFieldByName(query.fieldName);onChange()" ng-model="query.fieldName"/>'+
-                       '            <ul ng-if="query.fields.filterByName(query.fieldName, query.field.name).length" class="dropdown-menu" style="max-height:220px;overflow:auto">'+
+                       '            <ul ng-if="query.fields.filterByName(query.fieldName, query.field.name).length" class="dropdown-menu" style="max-height:250px;overflow:auto">'+
                        '                <li ng-repeat="field in query.fields.filterByName(query.fieldName, query.field.name)" ng-class="{\'active\':(field.name===query.fieldName)}">'+
                        '                    <a href="" ng-click="query.setField(field);onChange()">'+
                        '			             {{field.name}}'+
@@ -4627,13 +4638,13 @@ angular.module('neQuery',['neLocal','neObject'])
                        '            </ul>'+
                        '        </div>'+
                        '        <div class="dropdown visible-inline-block" uib-dropdown keyboard-nav>'+
-                       '            <button ng-disabled="query.field.disableOperator || disabled" class="btn btn-default btn-sm" uib-dropdown-toggle style="width:120px">'+
+                       '            <button ng-disabled="query.field.disableOperator || disabled" class="btn btn-default btn-sm btn-intensive" uib-dropdown-toggle style="width:120px">'+
                        '                <span class="class="nowrap"">{{query.operator | translate}}&nbsp;</span>'+
                        '            </button>'+
                        '            <ul class="dropdown-menu" style="min-width:210px;overflow:auto">'+
                        '                <li ng-if="!query.field.disableType" class="text-center" style="padding-top:4px">'+
                        '                    <div class="btn-group btngroup-xs">'+
-                       '                        <button class="btn btn-default btn-xs" ng-class="{\'btn-success\':(query.type.name===type)}" style="padding:2px;" uib-tooltip="{{\'qtype_\'+type | translate}}" ng-repeat="type in query.types" ng-click="query.setType(type);$event.stopPropagation();">'+
+                       '                        <button class="btn btn-default btn-xs" ng-class="{\'btn-success\':(query.type.name===type)}" style="padding:2px;" uib-tooltip="{{\'qtype_\'+type | translate}}" tooltip-append-to-body="true" ng-repeat="type in query.types" ng-click="query.setType(type);$event.stopPropagation();">'+
                        '                        {{\'qtype_short_\'+type | translate}}'+
                        '                        </button>'+
                        '                    </div>'+
@@ -4733,10 +4744,12 @@ angular.module('neQuery',['neLocal','neObject'])
                        '           uib-dropdown-toggle '+
                        '           ng-disabled="disabled" '+
                        '           ng-model="query.suggestion" '+
-                       '           ng-change="query.field.onlySuggestedValues ? query.value=null : query.value=query.suggestion;query.field.createSuggestions(query, query.suggestion);onChange()">'+
-                       '    <ul ng-if="query.suggestions.length" class="dropdown-menu" style="max-height:220px;overflow:auto">'+
+                       '           ng-click="(query.field.suggestionMinLength===0 && !query.suggestions) ? query.field.createSuggestions(query, query.suggestion) : null" '+
+                       '           ng-change="query.page=1;query.field.onlySuggestedValues ? query.value=null : query.value=query.suggestion;query.field.createSuggestions(query, query.suggestion, true);onChange()">'+
+                       '    <ul ng-if="query.suggestions.length" class="dropdown-menu" style="max-height:250px;overflow:auto">'+
                        '        <li ng-if="query.field.pagination" class="text-center" style="padding-top:4px">'+
                        '            <button class="btn btn-xs btn-default" ng-disabled="!query.pagination.prev" ng-click="$event.stopPropagation();query.page=(query.page||1)-1;query.field.createSuggestions(query, query.suggestion)"><i class="fa fa-fw fa-backward"></i></button>'+
+                       '            {{query.page||1}}'+
                        '            <button class="btn btn-xs btn-default" ng-disabled="!query.pagination.next" ng-click="$event.stopPropagation();query.page=(query.page||1)+1;query.field.createSuggestions(query, query.suggestion)"><i class="fa fa-fw fa-forward"></i></button>'+
                        '        </li>'+
                        '        <li ng-if="query.field.pagination" class="divider"></li>'+
@@ -4761,7 +4774,7 @@ angular.module('neQuery',['neLocal','neObject'])
                        '                <span class="nowrap" ng-if="sort.fieldName">{{sort.fieldName}}</span><span class="nowrap" ng-if="!sort.fieldName">{{::\'choose field\'|translate}}</span>'+
                        '            </button>'+
                        '            <input ng-if="!query.onlyPredefinedFields" type="text" ng-disabled="disabled" placeholder="{{::\'choose field\'|translate}}" class="input-sm" uib-dropdown-toggle ng-change="query.setSortByName(sort.fieldName, $index);onChange()" ng-model="sort.fieldName" />'+
-                       '            <ul ng-if="query.fields.filterByName(sort.fieldName, sort.name).length" class="dropdown-menu" style="max-height:220px;overflow:auto">'+
+                       '            <ul ng-if="query.fields.filterByName(sort.fieldName, sort.name).length" class="dropdown-menu" style="max-height:250px;overflow:auto">'+
                        '                <li ng-repeat="field in query.fields.filterByName(sort.fieldName, sort.name)" ng-class="{\'active\':(field.name===sort.fieldName)}">'+
                        '                    <a href="" ng-click="query.setSortField(field,$parent.$index);onChange()">'+
                        '        			    {{field.name}}'+
@@ -4779,7 +4792,7 @@ angular.module('neQuery',['neLocal','neObject'])
                        '    </div>'+
                        '</div>'+
                        '<br ng-repeat-end>'+
-                       '<button ng-if="!query.sortBy.length" class="btn btn-default btn-sm" ng-disabled="disabled" ng-click="query.addSort();onChange()"><i class="fa fa-fw fa-signal"></i> <span class="hidden-sm">{{::\'Order By\'|translate}}</span></button>'+
+                       '<button ng-if="!query.sortBy.length" class="btn btn-default btn-sm btn-intensive" ng-disabled="disabled" ng-click="query.addSort();onChange()"><i class="fa fa-fw fa-signal"></i> <span class="hidden-sm">{{::\'Order By\'|translate}}</span></button>'+
                        '</div>');
 }])
 .directive('neQueryValue',[function(){
@@ -4799,7 +4812,7 @@ angular.module('neQuery',['neLocal','neObject'])
         template: '<div class="pull-left" ne-query="query" ne-query-change="onChange()" ne-query-disabled="disabled"></div>'+
                   '<div class="pull-left hidden-xs" style="width:20px">&nbsp;</div>'+
                   '<div class="pull-left" ne-query-sort="query" ne-query-sort-change="onChange()" ne-query-sort-disabled="disabled"></div>'+
-                  '<button ng-disabled="disabled" class="btn btn-primary btn-sm" ng-click="searchClick()" style="margin-left:2px">'+
+                  '<button ng-disabled="disabled" class="btn btn-primary btn-sm btn-intensive" ng-click="searchClick()" style="margin-left:2px">'+
                   '    <i class="fa fa-fw fa-search"></i>'+
                   '    <span class="hidden-sm">{{::\'Search\' | translate}}</span>'+
                   '</button>',
@@ -5899,12 +5912,15 @@ angular.module('neQuery',['neLocal','neObject'])
                 };
                 fields[i].template = fields[i].template || templates.suggestions;
                 fields[i].createSuggestions = (function(field){
-                    var minLength = field.suggestionMinLength || field.suggestionMinSearchLength || 3;
-                    return object.debounce(function(query, searchText){
+                    field.suggestionMinLength = field.suggestionMinLength >= 0 ? field.suggestionMinLength : (field.suggestionMinSearchLength >= 0 ? field.suggestionMinSearchLength : 3);
+                    
+                    var loadSuggestionsDebounced = object.debounce(loadSuggestions, field.suggestionDebounce >= 0 ? field.suggestionDebounce : 350);
+
+                    function loadSuggestions(query, searchText){
                         searchText = searchText || '';
                         query.page = query.page || field.page || 1;
                         query.limit = query.limit || field.limit || 10;
-                        if(searchText.length >= minLength) field.loadSuggestions.call(query, searchText, function(values, pagination){
+                        if(searchText.length >= field.suggestionMinLength) field.loadSuggestions.call(query, searchText, function(values, pagination){
                             query.suggestions = values.map(function(value) {
                               return {
                                 key: value.key || value,
@@ -5914,7 +5930,12 @@ angular.module('neQuery',['neLocal','neObject'])
                             query.page = pagination.page || query.page;
                             query.limit = pagination.limit || query.limit;
                         });
-                    }, field.suggestionDebounce >= 0 ? field.suggestionDebounce : 350);
+                    }
+                    
+                    return function(query, searchText, debounce){
+                        if(debounce) return loadSuggestionsDebounced(query, searchText);
+                        else return loadSuggestions(query, searchText);
+                    };
                 })(fields[i]);
             }
         }
@@ -6542,16 +6563,16 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
     /*
      * RESPONSE HANDLERS
      */
-                                
-    function execCbs(fncs){
+    
+    function execCbs(ctx, fncs){
         var args = [], i;
-        for(i=1;i<arguments.length;i++) args.push(arguments[i]);
+        for(i=2;i<arguments.length;i++) args.push(arguments[i]);
         for(i=0;i<fncs.length;i++){
-            if(typeof fncs[i] === 'function' && fncs[i].apply(this, args) === true) return;
+            if(typeof fncs[i] === 'function' && fncs[i].apply(ctx, args) === true) return;
         }
     }
     
-    function handleSuccess(query, opts, cmdName, successCbs){
+    function handleSuccess(httpOpts, query, opts, cmdName, successCbs){
         return function(response){
             
             var httpOpts = response.config,
@@ -6571,12 +6592,12 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
             }
             
             parsedData = parseAdditionalKeys(opts, cmdName, data, parsedData);
-            execCbs([ cmdOpts.onData, opts.onData ], parsedData, (parsedData||{}).pagination, data, status, isList, cmdName);
-            execCbs(successCbs, parsedData, (parsedData||{}).pagination, data, status);
+            execCbs(httpOpts, [ cmdOpts.onData, opts.onData ], parsedData, (parsedData||{}).pagination, data, status, isList, cmdName);
+            execCbs(httpOpts, successCbs, parsedData, (parsedData||{}).pagination, data, status);
         };
     }
     
-    function handleError(query, opts, cmdName, errorCbs){
+    function handleError(httpOpts, query, opts, cmdName, errorCbs){
         return function(response){
             var httpOpts = response.config,
                 cmdOpts = opts.commands[cmdName],
@@ -6590,7 +6611,7 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
                 errorKey = cmdOpts.errorKey || opts.errorKey,
                 parsedError = object.deepGet(data, errorKey);
             
-            execCbs(responseErrorCbs, parsedError, status, headers);
+            execCbs(httpOpts, responseErrorCbs, parsedError, status, headers);
         };
     }
     
@@ -6642,8 +6663,8 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
             xhrListeners('removeEventListener');
             if(!ignoreLoading) loading.reqEnded();
             
-            if(status >= 200 && status <= 299) handleSuccess(query, opts, cmdName, successCbs)(response);
-            else handleError(query, opts, cmdName, errorCbs)(response);
+            if(status >= 200 && status <= 299) handleSuccess(httpOpts, query, opts, cmdName, successCbs)(response);
+            else handleError(httpOpts, query, opts, cmdName, errorCbs)(response);
         }
         
         function loadListener(e){ handleResponse(e.target, 'load'); }
@@ -6651,8 +6672,8 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
         function abortListener(e){ handleResponse(e.target, 'abort'); }
         function progressListener(e) {
             if(!progressCbs) return;
-            if (e.lengthComputable) execCbs(progressCbs, Math.ceil(100 * e.loaded / e.total));
-            else execCbs(progressCbs, 50); // Unable to compute progress information since the total size is unknown
+            if (e.lengthComputable) execCbs(httpOpts, progressCbs, Math.ceil(100 * e.loaded / e.total));
+            else execCbs(httpOpts, progressCbs, 50); // Unable to compute progress information since the total size is unknown
         }
         
         function xhrListeners(elProp){
@@ -6790,16 +6811,21 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
         var queryString = queryStringBuilder.call(resource, query, cmdName);
         if(urlPath.indexOf('?') > -1 && queryString.indexOf('?') === 0) queryString = '&'+queryString.substring(1);
         
+        var requestId = object.guid();
+
         var httpOpts = {
             url: urlPath + queryString,
             method: method,
             data: applyTransformators(data, transformRequest),
-            headers: headers,
-            ignoreLoading: ignoreLoading
+            headers: typeof headers === 'function' ? headers(opts.headers, data, cmdName, method, urlPath + queryString) : headers,
+            ignoreLoading: ignoreLoading,
+            requestId: requestId
         };
-        
+
         if(method === 'post-multipart' || method === 'upload') upload.call(resource, cmdName, query, httpOpts, successCbs, errorCbs, progressCbs);
-        else $http(httpOpts).then(handleSuccess(query, opts, cmdName, successCbs), handleError(query, opts, cmdName, errorCbs));
+        else $http(httpOpts).then(handleSuccess(httpOpts, query, opts, cmdName, successCbs), handleError(httpOpts, query, opts, cmdName, errorCbs));
+        
+        return requestId;
     };
                                 
     function replacePaginationProps(queryOrData, pageKey, limitKey, sortKey, object) {
@@ -7756,7 +7782,9 @@ angular.module('neTree',['neObject'])
                 if(parent) parent.$query = query;
                 else delete query.$limit;
                 tree.disabled = true;
-                tree.getResourceMethod('find', parent)(query, function(items, pagination){
+                tree.lastFindReqId = tree.getResourceMethod('find', parent)(query, function(items, pagination){
+                    if(tree.lastFindReqId && tree.lastFindReqId !== this.requestId) return;
+
                     tree.fillItems(parent, items, pagination, loadMode);
                     if(cb) cb(items);
                     tree.disabled = false;

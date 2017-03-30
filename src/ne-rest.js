@@ -369,16 +369,16 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
     /*
      * RESPONSE HANDLERS
      */
-                                
-    function execCbs(fncs){
+    
+    function execCbs(ctx, fncs){
         var args = [], i;
-        for(i=1;i<arguments.length;i++) args.push(arguments[i]);
+        for(i=2;i<arguments.length;i++) args.push(arguments[i]);
         for(i=0;i<fncs.length;i++){
-            if(typeof fncs[i] === 'function' && fncs[i].apply(this, args) === true) return;
+            if(typeof fncs[i] === 'function' && fncs[i].apply(ctx, args) === true) return;
         }
     }
     
-    function handleSuccess(query, opts, cmdName, successCbs){
+    function handleSuccess(httpOpts, query, opts, cmdName, successCbs){
         return function(response){
             
             var httpOpts = response.config,
@@ -398,12 +398,12 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
             }
             
             parsedData = parseAdditionalKeys(opts, cmdName, data, parsedData);
-            execCbs([ cmdOpts.onData, opts.onData ], parsedData, (parsedData||{}).pagination, data, status, isList, cmdName);
-            execCbs(successCbs, parsedData, (parsedData||{}).pagination, data, status);
+            execCbs(httpOpts, [ cmdOpts.onData, opts.onData ], parsedData, (parsedData||{}).pagination, data, status, isList, cmdName);
+            execCbs(httpOpts, successCbs, parsedData, (parsedData||{}).pagination, data, status);
         };
     }
     
-    function handleError(query, opts, cmdName, errorCbs){
+    function handleError(httpOpts, query, opts, cmdName, errorCbs){
         return function(response){
             var httpOpts = response.config,
                 cmdOpts = opts.commands[cmdName],
@@ -417,7 +417,7 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
                 errorKey = cmdOpts.errorKey || opts.errorKey,
                 parsedError = object.deepGet(data, errorKey);
             
-            execCbs(responseErrorCbs, parsedError, status, headers);
+            execCbs(httpOpts, responseErrorCbs, parsedError, status, headers);
         };
     }
     
@@ -469,8 +469,8 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
             xhrListeners('removeEventListener');
             if(!ignoreLoading) loading.reqEnded();
             
-            if(status >= 200 && status <= 299) handleSuccess(query, opts, cmdName, successCbs)(response);
-            else handleError(query, opts, cmdName, errorCbs)(response);
+            if(status >= 200 && status <= 299) handleSuccess(httpOpts, query, opts, cmdName, successCbs)(response);
+            else handleError(httpOpts, query, opts, cmdName, errorCbs)(response);
         }
         
         function loadListener(e){ handleResponse(e.target, 'load'); }
@@ -478,8 +478,8 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
         function abortListener(e){ handleResponse(e.target, 'abort'); }
         function progressListener(e) {
             if(!progressCbs) return;
-            if (e.lengthComputable) execCbs(progressCbs, Math.ceil(100 * e.loaded / e.total));
-            else execCbs(progressCbs, 50); // Unable to compute progress information since the total size is unknown
+            if (e.lengthComputable) execCbs(httpOpts, progressCbs, Math.ceil(100 * e.loaded / e.total));
+            else execCbs(httpOpts, progressCbs, 50); // Unable to compute progress information since the total size is unknown
         }
         
         function xhrListeners(elProp){
@@ -617,16 +617,21 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
         var queryString = queryStringBuilder.call(resource, query, cmdName);
         if(urlPath.indexOf('?') > -1 && queryString.indexOf('?') === 0) queryString = '&'+queryString.substring(1);
         
+        var requestId = object.guid();
+
         var httpOpts = {
             url: urlPath + queryString,
             method: method,
             data: applyTransformators(data, transformRequest),
-            headers: headers,
-            ignoreLoading: ignoreLoading
+            headers: typeof headers === 'function' ? headers(opts.headers, data, cmdName, method, urlPath + queryString) : headers,
+            ignoreLoading: ignoreLoading,
+            requestId: requestId
         };
-        
+
         if(method === 'post-multipart' || method === 'upload') upload.call(resource, cmdName, query, httpOpts, successCbs, errorCbs, progressCbs);
-        else $http(httpOpts).then(handleSuccess(query, opts, cmdName, successCbs), handleError(query, opts, cmdName, errorCbs));
+        else $http(httpOpts).then(handleSuccess(httpOpts, query, opts, cmdName, successCbs), handleError(httpOpts, query, opts, cmdName, errorCbs));
+        
+        return requestId;
     };
                                 
     function replacePaginationProps(queryOrData, pageKey, limitKey, sortKey, object) {

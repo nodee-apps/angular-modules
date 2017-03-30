@@ -393,6 +393,14 @@ angular.module('neObject',[])
     function isArray(obj){
         return Array.isArray(obj);
     }
+
+    function s4() {
+      return Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
+    }
+
+    function guid() {
+      return s4() + s4() + '-' + s4() + '-' + s4() + '-' + s4() + '-' + s4() + s4() + s4();
+    }
     
     return {
         isObject: isObject,
@@ -415,7 +423,8 @@ angular.module('neObject',[])
         fromJson: fromJson,
         fromJSON: fromJson,
         removePrefixedProps: removePrefixedProps,
-        debounce: debounce
+        debounce: debounce,
+        guid: guid
     };
 
 }]);

@@ -561,7 +561,9 @@ angular.module('neTree',['neObject'])
                 if(parent) parent.$query = query;
                 else delete query.$limit;
                 tree.disabled = true;
-                tree.getResourceMethod('find', parent)(query, function(items, pagination){
+                tree.lastFindReqId = tree.getResourceMethod('find', parent)(query, function(items, pagination){
+                    if(tree.lastFindReqId && tree.lastFindReqId !== this.requestId) return;
+
                     tree.fillItems(parent, items, pagination, loadMode);
                     if(cb) cb(items);
                     tree.disabled = false;

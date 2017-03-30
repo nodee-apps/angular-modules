@@ -279,7 +279,9 @@ angular.module('neGrid',['neObject','neLocal'])
         var grid = this;
         if(!grid.interceptLoad || (grid.interceptLoad && grid.interceptLoad(grid.query)!==false)){            
             grid.disabled = true;
-            grid.getResourceMethod('find')(grid.query, function(items, pagination){
+            grid.lastFindReqId = grid.getResourceMethod('find')(grid.query, function(items, pagination){
+                if(grid.lastFindReqId && grid.lastFindReqId !== this.requestId) return;
+
                 if(typeof grid.onLoad === 'function') grid.onLoad(items, pagination);
                 grid.fillItems(items, pagination);
                 if(cb) cb();
