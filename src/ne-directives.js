@@ -323,7 +323,7 @@ angular.module('neDirectives',['neObject'])
 			'onDrop': '&neFileDrop'
 		},
         link: function(scope, element, attrs, ctrl) {
-            var typeRegexp = attrs.dmsFileDropArea ? new RegExp(attrs.dmsFileDropArea) : null;
+            var typeRegexp = attrs.neFileDropArea ? new RegExp(attrs.neFileDropArea) : null;
             
             element.on('load', function(){
                 scope.setNaturalHeight(this.naturalHeight);
