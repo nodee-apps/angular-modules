@@ -19,6 +19,7 @@ angular.module('neDragdrop',[])
             e.dataTransfer.setData('Text', this.id);
             this.classList.add('dragged');
             
+            // exec drag start expression
             if(attrs.drag) scope.$apply(attrs.drag);
             
             return false;
@@ -26,6 +27,10 @@ angular.module('neDragdrop',[])
         
         function removeDragClass(e) {
             this.classList.remove('dragged');
+
+            // exec drag end expression
+            if(attrs.dragEnd) scope.$apply(attrs.dragEnd);
+
             return false;
         }
         
@@ -57,13 +62,18 @@ angular.module('neDragdrop',[])
             e.dataTransfer.dropEffect = 'move';
             // allows us to drop
             if (e.preventDefault) e.preventDefault();
-            this.classList.add('dragover');
+
+            if(!attrs.droppable || (attrs.droppable && scope.$apply(attrs.droppable))) {
+                this.classList.add('dragover');
+            }
             return false;
         }
         el.addEventListener('dragover', dragover);
         
         function dragenter(e) {
-            this.classList.add('dragover');
+            if(!attrs.droppable || (attrs.droppable && scope.$apply(attrs.droppable))) {
+                this.classList.add('dragover');
+            }
             return false;
         }
         el.addEventListener('dragenter', dragenter);
@@ -86,7 +96,7 @@ angular.module('neDragdrop',[])
             //this.appendChild(item);
             // call the passed drop function
             
-            if(attrs.drop) scope.$apply(attrs.drop);
+            if(attrs.drop && (!attrs.droppable || (attrs.droppable && scope.$apply(attrs.droppable)))) scope.$apply(attrs.drop);
             
             //scope.$apply(function(scope) {
             //    if(scope.drop) scope.$eval(scope.drop);
