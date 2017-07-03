@@ -48,6 +48,7 @@ angular.module('neModals', [])
       destroyOnClose:false,
       showAfterCreate:true,
       title:'modal title',
+      allowResize:true,
       zIndex:1040,
       text:'',
       html:'',
@@ -87,6 +88,7 @@ angular.module('neModals', [])
     this.destroyOnClose = (this.destroyOnClose===undefined) ? true : this.destroyOnClose;
     this.html = this.html ? $sce.trustAsHtml(this.html) : '';
     this.include = this.include || this.templateUrl || this.bodyTemplateUrl;
+    this.allowResize = this.allowResize===undefined ? modals.defaults.allowResize : this.allowResize;
     
     this.show = this.open = function(){
       if(this.visible) return; // do not open already opened modal
@@ -163,7 +165,7 @@ angular.module('neModals', [])
                        '                <div class="modal-content">'+
                        '                    <div class="modal-header">'+
                        '                        <button class="close" ng-click="modal.hide()"><i class="fa fa-times fa-fw fa-lg"></i></button>'+
-                       '                        <button class="close" ng-click="modal.wide = !modal.wide">'+
+                       '                        <button class="close" ng-if="modal.allowResize" ng-click="modal.wide = !modal.wide">'+
                        '                            <i style="font-size:15px;margin-right:5px;" class="fa fa-fw" ng-class="{\'fa-expand\':!modal.wide,\'fa-compress\':modal.wide}"></i>'+
                        '                        </button>'+
                        '                        <h4 class="modal-title">{{modal.title|translate}}</h4>'+
