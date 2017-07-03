@@ -262,7 +262,8 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
             url = replaceStringAll(url,'{' +urlParams[i]+ '}', stringifyWithoutQuotes(value));
         }
         
-        return unifyUrlPath(url);
+        if(resource.options.commands[cmdName].isFile) return unifyUrlPath(url).replace(/\/$/,''); // remove last slash if this is static file
+        else return unifyUrlPath(url);
     }                         
                                 
     function queryStringBuilder(query, cmdName) {
@@ -417,7 +418,7 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
                 errorKey = cmdOpts.errorKey || opts.errorKey,
                 parsedError = object.deepGet(data, errorKey);
             
-            execCbs(httpOpts, responseErrorCbs, parsedError, status, headers);
+            execCbs(httpOpts, responseErrorCbs, parsedError, status, headers, response.data);
         };
     }
     
@@ -492,7 +493,16 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
         $timeout(function(){
             xhrListeners('addEventListener');
             if(!ignoreLoading) loading.reqStarted(); // show loading notification
+
+            // open connection
             xhr.open('POST', url, true);
+
+            // set headers
+            for(var key in headers) {
+                if(key.toLowerCase() !== 'content-type' && 
+                   key.toLowerCase() !== 'content-length') xhr.setRequestHeader( key, headers[key] );
+            }
+
             xhr.send(fd);
         });
     }
