@@ -2572,74 +2572,128 @@ angular.module('neDirectives',['neObject'])
         }
     };
 }])
-.service('neFileDropArea', [function(){
-    this.bind = function(elm, afterDrop, readAs) { // readAsDataURL, readAsText, readAsArrayBuffer
+.constant('neFileDropAreaSystemFiles',[
+    'thumbs.db',
+    'desktop.ini',
+    '.DS_Store'
+])
+.service('neFileDropArea', ['$q', 'neFileDropAreaSystemFiles', function ($q, systemFiles) {
+    this.bind = function (elm, afterDrop, readAs, onError) { // readAsDataURL, readAsText, readAsArrayBuffer
         var dropbox = elm[0];
         var dragover = false;
-        
+
         // Setup drag and drop handlers.
         dropbox.addEventListener('dragenter', addDragClass, false);
         dropbox.addEventListener('dragover', addDragClass, false);
         dropbox.addEventListener('dragleave', removeDragClass, false);
         dropbox.addEventListener('drop', onDrop, false);
-          
+
         function stopDefault(e) {
             e.stopPropagation();
             e.preventDefault();
         }
-        
-        function addDragClass(e){
+
+        function addDragClass(e) {
             stopDefault(e);
-            if(!dragover) {
+            if (!dragover) {
                 elm.addClass('ne-dragover');
                 dragover = true;
             }
         }
-        
-        function removeDragClass(e){
+
+        function removeDragClass(e) {
             stopDefault(e);
             elm.removeClass('ne-dragover');
             dragover = false;
         }
-          
+
+        function getFilePromise(entry) {
+            return $q(function (resolve, reject) {
+                entry.file(resolve, reject);
+            });
+        }
+
+        function readEntriesPromise(directoryReader) {
+            return $q(function (resolve, reject) {
+                directoryReader.readEntries(resolve, reject);
+            });
+        }
+
+        function getFilesRecursively(entry, filterOSTempFiles) {
+            if (entry.isFile) {
+                // filter OS temp metadata files
+                if(filterOSTempFiles && systemFiles.indexOf(entry.name) > -1) return;
+                else return getFilePromise(entry);
+            } 
+            else if(entry.isDirectory) {
+                return readEntriesPromise(entry.createReader()).then(function (entries) {
+
+                    var promises = [], filePromise;
+                    for (var i = 0; i < entries.length; i++) {
+                        filePromise = getFilesRecursively(entries[i], true);
+                        if(filePromise) promises.push(filePromise);
+                    }
+
+                    return $q.all(promises).then(function (arrays) {
+                        return [].concat.apply([], arrays);
+                    });
+                });
+            }
+        }
+
+        function getFilesPromise(e) {
+            var items = e.dataTransfer.items;
+
+            if (!items) return $q.resolve(e.dataTransfer.files);
+            if (!items[0].webkitGetAsEntry) return $q.resolve(e.dataTransfer.files);
+
+            var files = [];
+            var promises = [], filePromise;
+            for (var i = 0; i < items.length; i++) {
+                filePromise = getFilesRecursively(items[i].webkitGetAsEntry());
+                if(filePromise) promises.push(filePromise);
+            }
+
+            return $q.all(promises).then(function (arrays) {
+                files = [].concat.apply([], arrays);
+                return $q.resolve(files);
+            })
+        }
+
         function onDrop(e) {
             removeDragClass(e);
-          
-            var readFileSize = 0;
-            var files = e.dataTransfer.files;
-            
-            var file = files[0];
-            if(!file) return;
-            readFileSize += file.fileSize;
-            
-            // Only process image files.
-            // var imageType = /image.*/;
-            // if (!file.type.match(imageType)) return;
-            
-            if(readAs){
-                var reader = new FileReader();
-                reader.onerror = function(e) {
-                    alert('Cannot read file: ' + e.target.error);
-                };
-                
-                // Create a closure to capture the file information.
-                reader.onload = (function(aFile) {
-                    return function(evt) {
-                        afterDrop(evt.target.result);
+
+            getFilesPromise(e).then(function (files) {                
+                var readFileSize = 0;
+                var file = files[0];
+                if (!file) return; // nothing is dropped
+                readFileSize += file.fileSize;
+
+                if (readAs) {
+                    var reader = new FileReader();
+                    reader.onerror = function (e) {
+                        alert('Cannot read file: ' + e.target.error);
                     };
-                })(file);
-                
-                // Read in the image file as a data url.
-                reader[readAs](file);
-                // readAsDataURL, readAsText, readAsArrayBuffer
-            }
-            else afterDrop(files);
+
+                    // Create a closure to capture the file information.
+                    reader.onload = (function (aFile) {
+                        return function (evt) {
+                            afterDrop(evt.target.result);
+                        };
+                    })(file);
+
+                    // readAsDataURL, readAsText, readAsArrayBuffer, e.g. read image file as a data url
+                    reader[readAs](file);
+                }
+                else afterDrop(files);
+            })
+            .catch(onError);
         }
-        
+
         return {
-            unbind:function(){
+            unbind: function () {
                 dragover = null;
-                
+
                 // Remove drag and drop handlers.
                 dropbox.removeEventListener('dragenter', addDragClass, false);
                 dropbox.removeEventListener('dragover', addDragClass, false);
@@ -2648,29 +2702,38 @@ angular.module('neDirectives',['neObject'])
             }
         };
     };
-    
+
     return this;
 }])
-.directive('neFileDropArea',['neFileDropArea', function(fileDropArea) {
+.directive('neFileDropArea', ['neFileDropArea', function (fileDropArea) {
     return {
         restrict: 'A',
-        link: function(scope, element, attrs, ctrl) {
+        scope: {
+            'onError': '&neFileDropOnError',
+            'onDrop': '&neFileDrop',
+            'onDropAlias1': '&neFilesDrop',
+            'onDropAlias2': '&ondrop'
+        },
+        link: function (scope, element, attrs, ctrl) {
             var typeRegexp = attrs.neFileDropArea ? new RegExp(attrs.neFileDropArea) : null;
-            
-            element.on('load', function(){
-                scope.setNaturalHeight(this.naturalHeight);
-                scope.setNaturalWidth(this.naturalWidth);
-            });
-            
-            var area = fileDropArea.bind(element, function(files){
+
+            var area = fileDropArea.bind(element, function(files) {
                 var filesArray = [];
-                var onDrop = attrs.neFileDrop || attrs.neFilesDrop || attrs.ondrop;
-                for(var i=0;i<files.length;i++) {
-                    if(!typeRegexp || files[i].type.match(typeRegexp)) filesArray.push(files[i]);
+                for (var i = 0; i < files.length; i++) {
+                    if (!typeRegexp || files[i].type.match(typeRegexp)) filesArray.push(files[i]);
                 }
-                scope.files = filesArray;
-                if(filesArray.length && onDrop) scope.$apply(onDrop);
+
+                if(filesArray.length) {
+                    scope.onDrop({ files: filesArray });
+                    scope.onDropAlias1({ files: filesArray });
+                    scope.onDropAlias2({ files: filesArray });
+                }
+            },
+            null,
+            function(error) {
+                scope.onError({ error: error });
             });
+
             scope.$on('$destroy', area.unbind);
         }
     };
