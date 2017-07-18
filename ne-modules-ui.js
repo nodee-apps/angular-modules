@@ -2899,12 +2899,12 @@ angular.module('neDragdrop',[])
             var data;
             
             try {
-                data = JSON.parse(document.getElementById(e.dataTransfer.getData('text'))+'');
+                data = JSON.parse(e.dataTransfer.getData('text')+'');
             }
             catch(err){}
 
             // call the passed drop function
-            if(attrs.drop && (!attrs.droppable || (attrs.droppable && scope.$apply(attrs.droppable)))) {
+            if(attrs.drop && (!attrs.droppable || (attrs.droppable && scope.$eval(attrs.droppable)))) {
                 scope.$eval(attrs.drop, { data:data });
                 scope.$apply();
             }
