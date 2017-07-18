@@ -18,11 +18,11 @@ angular.module('neLoading', [])
     prevStatus:0,
     lastStart: new Date().getTime(),
     statusListeners:[],
-    fireStatusListeners: function(){
+    fireStatusListeners: function(status){
       for(var i=0;i<service.statusListeners.length;i++){
         (function(i){
           $timeout(function(){
-            service.statusListeners[i](service.status);
+            service.statusListeners[i](status || service.status);
           },0,false);
         })(i);
       }
@@ -35,7 +35,7 @@ angular.module('neLoading', [])
       var now = new Date().getTime();
       if(service.prevStatus === 0 && percent > 0) service.lastStart = now;
       
-      if((now - service.lastStart) > debounce) service.fireStatusListeners();
+      if((now - service.lastStart) > debounce) service.fireStatusListeners(service.status);
         
       if(service.status > 0 && service.status < 99){
           service.statusTimeout = $timeout(function(){
@@ -43,16 +43,13 @@ angular.module('neLoading', [])
         }, debounce, false);
       }
       else if(service.status >= 100){
-        if((now - service.lastStart) > debounce){
-            service.statusTimeout = $timeout(function(){
-              service.setStatus(0);
-              service.fireStatusListeners();
-            }, endDelay, false);
-        }
-        else {
-            service.status = 0;
-            service.prevStatus = 0;
-        }
+        service.status = 0;
+        service.prevStatus = 0;
+
+        service.statusTimeout = $timeout(function(){
+          service.setStatus(0);
+          service.fireStatusListeners(0);
+        }, endDelay, false);
       }
     },
     reqStarted: function(debugNotes){

@@ -15,12 +15,14 @@ angular.module('neDragdrop',[])
         }
         
         function addDragClass(e) {
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('Text', this.id);
-            this.classList.add('dragged');
-            
+            var dragData;
+
             // exec drag start expression
-            if(attrs.drag) scope.$apply(attrs.drag);
+            if(attrs.drag) dragData = scope.$apply(attrs.drag);
+
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', JSON.stringify(dragData || new Date()));
+            this.classList.add('dragged');
             
             return false;
         }
@@ -47,7 +49,7 @@ angular.module('neDragdrop',[])
             el.addEventListener('dragend', removeDragClass);
             
             scope.$on('$destroy', function(){
-                el.removeEventListener('dragstart', preventDrag);
+                el.removeEventListener('dragstart', addDragClass);
                 el.removeEventListener('dragend', removeDragClass);
             });
         }
@@ -91,17 +93,19 @@ angular.module('neDragdrop',[])
             
             this.classList.remove('dragover');
           
-            //var binId = this.id;
-            //var item = document.getElementById(e.dataTransfer.getData('Text'));
-            //this.appendChild(item);
+            var data;
+            
+            try {
+                data = JSON.parse(document.getElementById(e.dataTransfer.getData('text'))+'');
+            }
+            catch(err){}
+
             // call the passed drop function
-            
-            if(attrs.drop && (!attrs.droppable || (attrs.droppable && scope.$apply(attrs.droppable)))) scope.$apply(attrs.drop);
-            
-            //scope.$apply(function(scope) {
-            //    if(scope.drop) scope.$eval(scope.drop);
-            //});
-                
+            if(attrs.drop && (!attrs.droppable || (attrs.droppable && scope.$apply(attrs.droppable)))) {
+                scope.$eval(attrs.drop, { data:data });
+                scope.$apply();
+            }
+
             return false;
         }
         el.addEventListener('drop', drop);
