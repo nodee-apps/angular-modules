@@ -22,7 +22,7 @@ angular.module('neLoading', [])
       for(var i=0;i<service.statusListeners.length;i++){
         (function(i){
           $timeout(function(){
-            service.statusListeners[i](status || service.status);
+            service.statusListeners[i](status!==undefined ? status : service.status);
           },0,false);
         })(i);
       }

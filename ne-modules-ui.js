@@ -3427,7 +3427,7 @@ angular.module('neLoading', [])
       for(var i=0;i<service.statusListeners.length;i++){
         (function(i){
           $timeout(function(){
-            service.statusListeners[i](status || service.status);
+            service.statusListeners[i](status!==undefined ? status : service.status);
           },0,false);
         })(i);
       }
@@ -6669,8 +6669,8 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
             }
             
             parsedData = parseAdditionalKeys(opts, cmdName, data, parsedData);
-            execCbs(httpOpts, [ cmdOpts.onData, opts.onData ], parsedData, (parsedData||{}).pagination, data, status, isList, cmdName);
-            execCbs(httpOpts, successCbs, parsedData, (parsedData||{}).pagination, data, status);
+            execCbs(httpOpts, [ cmdOpts.onData, opts.onData ], parsedData, (parsedData||{}).pagination, data, status, headers, isList, cmdName);
+            execCbs(httpOpts, successCbs, parsedData, (parsedData||{}).pagination, data, status, headers);
         };
     }
     
@@ -6846,6 +6846,7 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
             cmdOpts = opts.commands[cmdName],
             baseUrl = (typeof cmdOpts.baseUrl === 'string' ? cmdOpts.baseUrl : opts.baseUrl) || '',
             method = (cmdOpts.method || 'GET').toLowerCase(),
+            responseType = cmdOpts.responseType || opts.responseType,
             canHaveBody = typeof cmdOpts.body === 'boolean' ? cmdOpts.body : (['options','post','post-multipart','upload','put','delete'].indexOf(method) > -1),
             headers = cmdOpts.headers || opts.headers,
             urlTemplate = (typeof cmdOpts.url === 'string' ? cmdOpts.url : opts.url) || '',
@@ -6905,7 +6906,8 @@ angular.module('neRest',['neObject','neNotifications','neLoading'])
             data: applyTransformators(data, transformRequest),
             headers: typeof headers === 'function' ? headers(opts.headers, data, cmdName, method, urlPath + queryString) : headers,
             ignoreLoading: ignoreLoading,
-            requestId: requestId
+            requestId: requestId,
+            responseType: responseType
         };
 
         if(method === 'post-multipart' || method === 'upload') upload.call(resource, cmdName, query, httpOpts, successCbs, errorCbs, progressCbs);
