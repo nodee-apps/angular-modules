@@ -71,7 +71,7 @@ angular.module('neGrid',['neObject','neLocal'])
             if(dirty_class==='ng-dirty')
                 throw new Error('dirtyClass cannot be equal to "ng-dirty", it is angular reserved class name');
             
-            var names = (attrs.gridUpdateBlur || '').split(',');
+            var names = (attrs.neGridUpdateBlur || '').split(',');
             var gridName = names[0] || 'grid';
             var itemName = names[1] || 'item';
             var grid = object.deepGet(scope, gridName);

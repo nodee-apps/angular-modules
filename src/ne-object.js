@@ -83,9 +83,10 @@ angular.module('neObject',[])
                         }  
                         // Never move original objects, clone them
                         target[ name ] = object.extend( deep, clone, copy );
-                    // Don't bring in undefined values
-                    } else if ( copy !== undefined ) {
-                        target[ name ] = copy;
+                    }
+                    // copy all include undefined props - helpful in query builder
+                    else { // if (copy !== undefined){ // Don't bring in undefined values
+                        target[name] = copy;
                     }
                 }
             }

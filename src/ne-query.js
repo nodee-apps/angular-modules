@@ -304,7 +304,10 @@ angular.module('neQuery',['neLocal','neObject'])
         }
     };
 }])
-.factory('NeQuery',['neLocal','neObject', function(local, object){
+.constant('neQueryConfig', {
+    useRegexBracketsWrap: false
+})
+.factory('NeQuery',['neLocal','neObject', 'neQueryConfig', function(local, object, queryConfig){
 
     var templates = {
         query: 'neQuery/query.html',
@@ -323,6 +326,34 @@ angular.module('neQuery',['neLocal','neObject'])
     var querySortKey = '$sort';
     var queryOptionKeys = ['$limit', '$page', '$skip', '$sort'];
     var queryOptionKeyPrefix = '$';
+
+    function isRegexString(str){
+        if(str === undefined) return false;
+        var regexChars = {
+            '-': true,
+            '[': true,
+            ']': true,
+            '/': true,
+            '{': true,
+            '}': true,
+            '(': true,
+            ')': true,
+            '*': true,
+            '+': true,
+            '?': true,
+            '.': true,
+            '\\': true,
+            '^': true,
+            '$': true,
+            '|': true
+        }
+        var escaped = false;
+        for(var i=0;i<str.length;i++){
+            if(str[i] === '\\') escaped = !escaped;
+            if(str[i+1] !== '\\' && regexChars[ str[i] ] && !escaped) return true;
+        }
+        return false;
+    }
 
     function escapeRegExp(str) {
         return (str||'').replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, '\\$&');
@@ -787,11 +818,19 @@ angular.module('neQuery',['neLocal','neObject'])
             }
         },
         $regex:{
-            build: function(value){ return { $regex: value }; },
+            build: function(value){ 
+                if(queryConfig.useRegexBracketsWrap) value = '(' + value + ')';
+                return { 
+                    $regex: value
+                };
+            },
             parse: function(key, value){
                 var operator, op, match;
 
-                for(var i=0;i<types.string.operators.length;i++){
+                if(queryConfig.useRegexBracketsWrap && typeof value === 'string' && value[0] === '(' && value[ value.length-1 ] === ')'){
+                    value = value.slice(1, value.length - 1);
+                }
+                else for(var i=0;i<types.string.operators.length;i++){
                     op = types.string.operators[i];
                     if(queries[op] && queries[op].check && (match = queries[op].check(value)) !== undefined) {
                         operator = op;
@@ -820,6 +859,7 @@ angular.module('neQuery',['neLocal','neObject'])
             },
             check: function(value){
                 value = ( value.match(/^\.\*(.*)\.\*$/ ) || [] )[1];
+                if( isRegexString(value) ) return undefined;
                 return value === undefined ? undefined : unEscapeRegExp(value);
             }
         },
@@ -830,6 +870,7 @@ angular.module('neQuery',['neLocal','neObject'])
             },
             check: function(value){
                 value = (value.match(/^\^\(\(\?\!(.*)\)\.\)\*\$$/) || [])[1];
+                if( isRegexString(value) ) return undefined;
                 return value === undefined ? undefined : unEscapeRegExp(value);
             }
         },
@@ -840,6 +881,7 @@ angular.module('neQuery',['neLocal','neObject'])
             },
             check: function(value){
                 value = (value.match(/^\^(.*)\.\*$/) || [])[1];
+                if( isRegexString(value) ) return undefined;
                 return value === undefined ? undefined : unEscapeRegExp(value);
             }
         },
@@ -850,6 +892,7 @@ angular.module('neQuery',['neLocal','neObject'])
             },
             check: function(value){
                 value = (value.match(/^\^\(\?\!(.*)\)\.\*\$$/) || [])[1];
+                if( isRegexString(value) ) return undefined;
                 return value === undefined ? undefined : unEscapeRegExp(value);
             }
         },
@@ -860,6 +903,7 @@ angular.module('neQuery',['neLocal','neObject'])
             },
             check: function(value){
                 value = (value.match(/^\.\*(.*)\$$/) || [])[1];
+                if( isRegexString(value) ) return undefined;
                 return value === undefined ? undefined : unEscapeRegExp(value);
             }
         },
@@ -870,6 +914,7 @@ angular.module('neQuery',['neLocal','neObject'])
             },
             check: function(value){
                 value = (value.match(/^\^\(\?\!\.\*(.*)\$\)$/) || [])[1];
+                if( isRegexString(value) ) return undefined;
                 return value === undefined ? undefined : unEscapeRegExp(value);
             }
         },
