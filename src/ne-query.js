@@ -614,7 +614,7 @@ angular.module('neQuery',['neLocal','neObject'])
             child.type = types[result.typeName];
             child.value = result.value;
             child.setFieldByName(result.fieldName, true); // reset if defined, because default field (first) was already set
-            child.setValueByNameAndField();
+            child.resolveValueNames();
             child.operator = result.operator; // force change operator to show original query operator, even if field has disabled changing operator
         }
 
@@ -1001,6 +1001,8 @@ angular.module('neQuery',['neLocal','neObject'])
             this.splice(0, this.length); // clear array
             this.parse(builtQuery); // start with first child
             if((!this.parent || !this.parent()) && this.length===0) this.append('AND'); // if this is root query and there is no child, add one
+            if(q.resolveAllValueNames) q.resolveAllValueNames();
+            if(q.onFill) q.onFill();
             return q;
         };
         q.isEmpty = isEmpty; // is both, sort and query empty
@@ -1021,7 +1023,7 @@ angular.module('neQuery',['neLocal','neObject'])
         q.remove = remove;
         q.reset = reset;
         q.setFieldByName = setFieldByName;
-        q.setValueByNameAndField = setValueByNameAndField;
+        q.resolveValueNames = resolveValueNames;
         q.setField = setField;
         q.setOperator = setOperator;
         q.setType = setType;
@@ -1032,8 +1034,26 @@ angular.module('neQuery',['neLocal','neObject'])
         q.setSortField = setSortField;
 
         var parent;
+        q.root = q.getRoot = function(){ return parent ? parent.getRoot() : q; };
         q.parent = q.getParent = function(){ return parent; };
         q.setParent = function(newParent){ parent = newParent; };
+
+        if(!parent) q.resolveAllValueNames = function(){
+            q.fields.forEach(function(field){
+                var valsToResolve = {};
+                if(field.resolveValueNames && field.valueNames) {
+                    for(var val in field.valueNames) {
+                        if(field.valueNames[val] === null || field.valueNames[val] === undefined) {
+                            valsToResolve[ val ] = null;
+                        }
+                    }
+                    if(Object.keys(valsToResolve).length) field.resolveValueNames(valsToResolve, function(resolvedValNames){
+                        resolvedValNames = resolvedValNames || {};
+                        for(var val in resolvedValNames) field.valueNames[val] = resolvedValNames[val];
+                    });
+                }
+            });
+        };
 
         // set initial query state
         q.reset();
@@ -1161,15 +1181,45 @@ angular.module('neQuery',['neLocal','neObject'])
         this.field = { key:fieldName };
     }
 
-    function setValueByNameAndField() {
-        if(this.field.suggestions) {
-            var self = this;
-            this.field.suggestions("", function(values) {
-              var found = values.filter(function(value) {return value.key === self.value});
-              if(found.length) {
-                  self.suggestion = found[0].name;
-              }
+    function resolveValueNames() {
+        var q = this;
+
+        var root = q.getRoot();
+        var rootField = root.fields.filter(function(field){
+            return field.key === (q.field || {}).key;
+        })[0];
+
+        if(!rootField) return;
+        rootField.valueNames = rootField.valueNames || {};
+
+        // set suggestion getter for refreshing purposes
+        Object.defineProperty(q, 'suggestion', {
+            get: function() { return rootField.valueNames[ q.value ] || q.value; },
+            set: function(name) { rootField.valueNames[ q.value ] = name; },
+        });
+
+        if(rootField.valueNames[ q.value ]) return; // already resolved
+        else if(q.field.resolveValueName) { // single value resolve
+            q.field.resolveValueName(q.value, function(valueName){
+                if(typeof valueName === 'string') {
+                    q.suggestion = valueName;
+                    rootField.valueNames[ q.value ] = valueName;
+                }
+                else {
+                    if(!Array.isArray(valueName)) valueName = [valueName];
+                    for(var i=0;i<valueName.length;i++){
+                        if(valueName[i].key === q.value) {
+                            q.suggestion = valueName[i].name;
+                            rootField.valueNames[ q.value ] = valueName[i].name;
+                            return;
+                        }
+                    }
+                }
             });
+        }
+        else { // all value names resolve
+            // register another value which need to be resolved
+            rootField.valueNames[ q.value ] = null;
         }
     }
 
@@ -1411,9 +1461,10 @@ angular.module('neQuery',['neLocal','neObject'])
                         query.limit = query.limit || field.limit || 10;
                         if(searchText.length >= field.suggestionMinLength) field.loadSuggestions.call(query, searchText, function(values, pagination){
                             query.suggestions = values.map(function(value) {
-                              return {
-                                key: value.key || value,
-                                name: value.name || value.key || value};
+                                return {
+                                    key: value.key || value,
+                                    name: value.name || value.key || value
+                                };
                             });
                             query.pagination = pagination;
                             query.page = pagination.page || query.page;
