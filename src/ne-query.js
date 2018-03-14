@@ -305,10 +305,11 @@ angular.module('neQuery',['neLocal','neObject'])
     };
 }])
 .constant('neQueryConfig', {
-    useRegexBracketsWrap: false
+    useRegexBracketsWrap: false,
+    useStrictDateParser: true // matches only full date-time format like: 2018-03-13T23:00:00.000Z
 })
 .factory('NeQuery',['neLocal','neObject', 'neQueryConfig', function(local, object, queryConfig){
-
+    
     var templates = {
         query: 'neQuery/query.html',
         sort: 'neQuery/sort.html',
@@ -623,6 +624,8 @@ angular.module('neQuery',['neLocal','neObject'])
 
     // date parse regex
     var regexIso8601 = /^(\d{4}|\+\d{6})(?:-(\d{2})(?:-(\d{2})(?:T(\d{2}):(\d{2}):(\d{2})\.(\d{1,})(Z|([\-+])(\d{2}):(\d{2}))?)?)?)?$/;
+    var regexIsoStrict = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2}(?:\.\d*))(?:Z|(\+|-)([\d|:]*))?$/;
+
     function parseValueType(value){
         var type, match, milliseconds;
 
@@ -633,7 +636,7 @@ angular.module('neQuery',['neLocal','neObject'])
             else type = 'datetime';
         }
         else if(typeof value==='string') {
-            match = value.match(regexIso8601);
+            match = value.match(queryConfig.useStrictDateParser ? regexIsoStrict : regexIso8601);
             if(match) milliseconds = Date.parse(match[0]);
             if (!isNaN(milliseconds)) {
                 value = new Date(milliseconds);
