@@ -1001,7 +1001,7 @@ angular.module('neQuery',['neLocal','neObject'])
             this.splice(0, this.length); // clear array
             this.parse(builtQuery); // start with first child
             if((!this.parent || !this.parent()) && this.length===0) this.append('AND'); // if this is root query and there is no child, add one
-            if(q.resolveAllValueNames) q.resolveAllValueNames();
+            if(q.runValueNameResolver) q.runValueNameResolver();
             if(q.onFill) q.onFill();
             return q;
         };
@@ -1038,21 +1038,42 @@ angular.module('neQuery',['neLocal','neObject'])
         q.parent = q.getParent = function(){ return parent; };
         q.setParent = function(newParent){ parent = newParent; };
 
-        if(!parent) q.resolveAllValueNames = function(){
+        // sometimes, it is better to resolve all names by one BE call, so q.resolveAllValueNames is called instead of field.resolveValueNames
+        if(!parent) q.runValueNameResolver = function(){
+            var q = this;
+            var fieldValsToResolve = {}; // field.key:{ valueNames }
+            var needsToResolveSomeField = false;
+            var fieldsByKey = {};
+
             q.fields.forEach(function(field){
                 var valsToResolve = {};
-                if(field.resolveValueNames && field.valueNames) {
+
+                // cache fields by key, if someone wants to use other field props than key
+                fieldsByKey[ field.key ] = field;
+
+                if(field.valueNames) {
                     for(var val in field.valueNames) {
                         if(field.valueNames[val] === null || field.valueNames[val] === undefined) {
                             valsToResolve[ val ] = null;
                         }
                     }
-                    if(Object.keys(valsToResolve).length) field.resolveValueNames(valsToResolve, function(resolvedValNames){
+                    fieldValsToResolve[field.key] = valsToResolve;
+
+                    if(!Object.keys(valsToResolve).length) delete fieldValsToResolve[field.key];
+                    else if(field.resolveValueNames) field.resolveValueNames(valsToResolve, function(resolvedValNames){
                         resolvedValNames = resolvedValNames || {};
                         for(var val in resolvedValNames) field.valueNames[val] = resolvedValNames[val];
                     });
                 }
             });
+
+            if(q.resolveAllValueNames && Object.keys(fieldValsToResolve).length) {
+                q.resolveAllValueNames(fieldValsToResolve, fieldsByKey, function(resolvedFieldVals){
+                    q.fields.forEach(function(field){
+                        if(resolvedFieldVals[ field.key ]) object.merge(field.valueNames, resolvedFieldVals[ field.key ]);
+                    });
+                });
+            }
         };
 
         // set initial query state
